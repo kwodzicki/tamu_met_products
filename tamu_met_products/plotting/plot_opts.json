@@ -1,0 +1,25 @@
+{
+  "colorbar_Opts" : {
+      "drawedges"   : true,
+      "orientation" : "horizontal"
+  },
+  "contour_Opts" : {
+      "colors"     : "k", 
+      "linewidths" : 2
+  },
+  "contourf_Opts" : {
+      "extend"    : "both", 
+      "zorder"    : 0
+  },
+  "clabel_Opts" : {
+      "fontsize"       : 10, 
+      "inline"         : 1, 
+      "inline_spacing" : 1, 
+      "fmt"            : "%i", 
+      "rightside_up"   : true
+  },
+  "barb_Opts" : {
+      "linewidth" :  0.25,
+      "length"    :  6.0
+  }
+}

@@ -2,6 +2,7 @@ import numpy as np
 from matplotlib.colors import ListedColormap, BoundaryNorm
 
 # 500 hPa vorticity
+
 rgb  = [ [123, 144,  41,  41, 255, 255, 255, 255, 253, 253, 235, 203, 137],
          [ 17,  57, 147, 237, 255, 255, 255, 253, 164, 127,  47,   8,  17],
          [137, 234, 251, 237, 255, 255, 255,  56,  88,  35,  52,  20, 137]]
@@ -41,6 +42,21 @@ cmap = ListedColormap( rgb[1:-1,:] )
 cmap.set_under( rgb[ 0,:] )
 cmap.set_over(  rgb[-1,:] )
 temp_850 = {
+  'cmap' : cmap,
+  'norm' : BoundaryNorm(bds, cmap.N),
+  'lvls' : bds
+}
+
+# Surface plot
+rgb  = [ [255, 131,  41,  31,  17],
+         [255, 253, 252, 203, 137],
+         [255,  49,  46,  35,  20]]
+rgb  = np.array( rgb ).transpose() / 255.0;
+bds  = np.arange(60, 91, 10);
+cmap = ListedColormap( rgb[1:-1,:] )
+cmap.set_under( rgb[ 0,:] )
+cmap.set_over(  rgb[-1,:] )
+surface = {
   'cmap' : cmap,
   'norm' : BoundaryNorm(bds, cmap.N),
   'lvls' : bds
