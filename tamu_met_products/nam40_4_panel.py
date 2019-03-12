@@ -1,6 +1,7 @@
 import logging;
 import os
 from awips.dataaccess import DataAccessLayer as DAL;
+import cartopy.crs as ccrs;
 
 from .data_backends.awips_model_utils import awips_fcst_times, awips_model_base;
 from .data_backends.awips_models import NAM40;
@@ -9,7 +10,7 @@ from .plotting.forecast_4_panel import forecast_4_panel
 
 home = os.path.expanduser('~')
 
-def NAM40_4_Panel():
+def NAM40_4_Panel( interval = 6 ):
   '''
   Name:
     NAM40_awips
@@ -20,12 +21,13 @@ def NAM40_4_Panel():
   Outputs:
     Returns a dictionary containing all data
   Keywords:
+    interval : Interval, in hours, for forecast plot creation
     EDEX   : URL for EDEX host to use
   '''
   log = logging.getLogger(__name__);                                            # Set up function for logger
   log.info( 'Getting NAM40 data' );
   
-  outdir = os.path.join( home, 'NAM_4_Panel' );
+  outdir = os.path.join( home, 'HDWX', 'NAM_4_Panel' );
   if not os.path.isdir(outdir): os.makedirs( outdir );
   
   DAL.changeEDEXHost( "edex-cloud.unidata.ucar.edu" )
@@ -35,9 +37,10 @@ def NAM40_4_Panel():
   request.setLocationNames( NAM40['model_name'] );
   
   initTime, fcstTimes, times = awips_fcst_times( request );
-  
+  transform = ccrs.PlateCarree();
   timeFMT = '%Y%m%dT%H%M%S'
   for i in range( len(times) ):
+    if (fcstTimes[i].hour % interval) != 0: continue;                           # If the forecast hour does not fall on the requested interval, skip it
     fcstTime = fcstTimes[i].strftime(timeFMT)
     fileName = '{}_{}.png'.format( NAM40['model_name'], fcstTime )
     filePath = os.path.join( outdir, fileName );
@@ -45,6 +48,6 @@ def NAM40_4_Panel():
       log.info( 'File exists, skipping: {}'.format(fcstTimes[i]) )
     else:
       log.info( 'Creating image for: {}'.format(fcstTimes[i]) )
-      data = awips_model_base( request, times[i], NAM40['model_vars'], NAM40['mdl2stnd'] )  
-      fig  = forecast_4_panel( data, initTime, fcstTimes[i] );
+      data = awips_model_base( request, times[i], NAM40['model_vars'], NAM40['mdl2stnd'] )
+      fig  = forecast_4_panel( data, initTime, fcstTimes[i], transform = transform );
       fig.savefig( filePath )

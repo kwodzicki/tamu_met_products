@@ -1,7 +1,7 @@
 import logging;
 import os, json;
 import cartopy.crs as ccrs;
-from .plot_utils import add_colorbar, plot_barbs, plot_basemap, baseLabel;
+from .plot_utils import add_colorbar, plot_barbs, plot_basemap, baseLabel, xy_transform;
 from . import color_maps;
 
 
@@ -10,7 +10,7 @@ with open( os.path.join( dir, 'plot_opts.json' ), 'r' ) as fid:
   opts = json.load(fid);
 
 ################################################################################
-def plot_850hPa_temp_hght_barbs( ax, lon, lat, temp, hght, model, initTime, fcstTime, u=None, v=None, **kwargs ):
+def plot_850hPa_temp_hght_barbs( ax, xx, yy, temp, hght, model, initTime, fcstTime, u=None, v=None, **kwargs ):
   '''
   Name:
     plot_850hPa_temp_hght_barbs
@@ -18,9 +18,9 @@ def plot_850hPa_temp_hght_barbs( ax, lon, lat, temp, hght, model, initTime, fcst
     A python function to plot a 850 hPa plot like the one in the
     lower left of the HDWX 4-panel plot
   Inputs:
-    ax       : Axis to plot on
-    lon      : Longitude values for plot
-    lat      : Latitude values for plot
+    ax       : A GeoAxes object for axes to plot data on
+    xx       : x-values for plot
+    yy       : y-values for plot
     temp     : temperature at 850 hPa to plot
     hght     : Geopotential heights at 850 hPa to plot
     model    : Name of the model being plotted
@@ -29,16 +29,16 @@ def plot_850hPa_temp_hght_barbs( ax, lon, lat, temp, hght, model, initTime, fcst
   Keywords:
     u : u-wind components for wind barbs
     v : v-wind components for wind barbs
+    All keywords accecpted by plotting methods
   Outputs:
     Returns the filled contour, contour, and colorbar objects
   '''
   log = logging.getLogger(__name__)
   log.info('Creating 850 hPa plot')
-  projection = kwargs.pop( 'projection', ccrs.PlateCarree() );                  # Get default data projection
 
-  xyz = ax.projection.transform_points(projection, lon.m, lat.m);               # Project longitude/latitude to map; cuts down on projecting multiple times
-  xx  = xyz[:,:,0];                                                             # Get re-projected longitudes
-  yy  = xyz[:,:,1];                                                             # Get re-projected latitudes
+  transform = kwargs.pop( 'transform', None );                                  # Get transformation for x- and y-values
+  if transform is not None:                                                     # If transform is not None, then we must transform the points for plotting
+    xx, yy = xy_transform( ax, transform, xx, yy )
 
   ax, scale = plot_basemap(ax);                                                 # Set up the basemap, get updated axis and map scale
   log.info('Plotting surface temperature')

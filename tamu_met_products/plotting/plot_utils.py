@@ -25,7 +25,7 @@ def baseLabel(model, initTime, fcstTime):
   '''  
   initFMT  = '%y%m%d/%H%M'
   fcstFMT  = '%a %y%m%d/%H%M'
-  dTime    = (fcstTime - initTime).seconds // 60
+  dTime    = int( (fcstTime - initTime).total_seconds() / 3600.0 )
   initTime = '{}F{:03d}'.format( initTime.strftime( initFMT ), dTime )
   fcstTime = '{}V{:03d}'.format( fcstTime.strftime( fcstFMT ), dTime )
   return ['{} FORECAST INIT {}'.format(    model, initTime ),
@@ -102,3 +102,26 @@ def plot_barbs( ax, scale, xx, yy, u, v ):
             u.to('kts')[::skip,::skip].m, v.to('kts')[::skip,::skip].m, 
             **opts['barb_Opts']
   )
+
+################################################################################
+def xy_transform( ax, transform, xx, yy):
+  '''
+  Name:
+    xy_tranform
+  Purpose:
+    A helper function to transform x- and y-values from the
+    'transform' projection to the GeoAxes 'ax' projection.
+  Inputs:
+    ax        : A GeoAxes object to project the data to
+    transform : A cartopy projection for the x- and y-values
+    xx        : X-values; typically longitudes
+    yy        : Y-values; typically latitudes
+  Outputs:
+    Returns the re-projected x- and y-values
+  Keywords:
+    None.
+  '''
+  if hasattr(xx, 'magnitude'): xx = xx.magnitude;                             # IF has a magnitude attribute, then is a Quantity object so get magnitude
+  if hasattr(yy, 'magnitude'): yy = yy.magnitude;                             # IF has a magnitude attribute, then is a Quantity object so get magnitude
+  xyz = ax.projection.transform_points(transform, xx, yy);                    # Project x- and y-values to map; cuts down on projecting multiple times
+  return xyz[:,:,0], xyz[:,:,1]

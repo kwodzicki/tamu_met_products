@@ -1,7 +1,7 @@
 import logging;
 import os, json;
 import cartopy.crs as ccrs;
-from .plot_utils import add_colorbar, plot_barbs, plot_basemap, baseLabel;
+from .plot_utils import add_colorbar, plot_barbs, plot_basemap, baseLabel, xy_transform;
 from . import color_maps;
 
 dir = os.path.dirname( os.path.realpath(__file__) );
@@ -9,7 +9,7 @@ with open( os.path.join( dir, 'plot_opts.json' ), 'r' ) as fid:
   opts = json.load(fid);
 
 ################################################################################
-def plot_500hPa_vort_hght_barbs( ax, lon, lat, vort, hght, model, initTime, fcstTime, u=None, v=None, **kwargs ):
+def plot_500hPa_vort_hght_barbs( ax, xx, yy, vort, hght, model, initTime, fcstTime, u=None, v=None, **kwargs ):
   '''
   Name:
     plot_500hPa_vort_hght_barbs
@@ -17,27 +17,27 @@ def plot_500hPa_vort_hght_barbs( ax, lon, lat, vort, hght, model, initTime, fcst
     A python function to plot a 500 hPa plot like the one in the
     upper left of the HDWX 4-panel plot
   Inputs:
-    ax    : Axis to plot on
-    lon   : Longitude values for plot
-    lat   : Latitude values for plot
-    vort  : Vorticity at 500 hPa to plot
-    hght  : Geopotential heights at 500 hPa to plot
+    ax       : A GeoAxes object for axes to plot data on
+    xx       : x-values for plot
+    yy       : y-values for plot
+    vort     : Vorticity at 500 hPa to plot
+    hght     : Geopotential heights at 500 hPa to plot
     model    : Name of the model being plotted
     initTime : Initialization time of the model run
     fcstTime : Forecast time of the model run
   Keywords:
     u : u-wind components for wind barbs
     v : v-wind components for wind barbs
+    All keywords accecpted by plotting methods
   Outputs:
     Returns the filled contour, contour, and colorbar objects
   '''
   log = logging.getLogger(__name__)
   log.info('Creating 500 hPa plot')
-  projection = kwargs.pop( 'projection', ccrs.PlateCarree() );                  # Get default data projection
 
-  xyz = ax.projection.transform_points(projection, lon.m, lat.m);               # Project longitude/latitude to map; cuts down on projecting multiple times
-  xx  = xyz[:,:,0];                                                             # Get re-projected longitudes
-  yy  = xyz[:,:,1];                                                             # Get re-projected latitudes
+  transform = kwargs.pop( 'transform', None );                                  # Get transformation for x- and y-values
+  if transform is not None:                                                     # If transform is not None, then we must transform the points for plotting
+    xx, yy = xy_transform( ax, transform, xx, yy )
 
   ax, scale = plot_basemap(ax);                                                 # Set up the basemap, get updated axis and map scale
 

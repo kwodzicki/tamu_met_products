@@ -2,7 +2,7 @@ import logging;
 import os, json;
 import numpy as np;
 import cartopy.crs as ccrs;
-from .plot_utils import add_colorbar, plot_barbs, plot_basemap, baseLabel;
+from .plot_utils import add_colorbar, plot_barbs, plot_basemap, baseLabel, xy_transform;
 from . import color_maps;
 
 dir = os.path.dirname( os.path.realpath(__file__) );
@@ -24,7 +24,7 @@ thickness_lvls  = thickness_lvls * 40 + 5500
 mslp_lvls = np.arange(-25, 26) * 4 + 1016
 
 ################################################################################
-def plot_srfc_rh_mslp_thick( ax, lon, lat, rh, mslp, hght_1000, hght_500, model, initTime, fcstTime, u=None, v=None, **kwargs ):
+def plot_srfc_rh_mslp_thick( ax, xx, yy, rh, mslp, hght_1000, hght_500, model, initTime, fcstTime, u=None, v=None, **kwargs ):
   '''
   Name:
     plot_srfc_rh_mslp_thick
@@ -32,10 +32,10 @@ def plot_srfc_rh_mslp_thick( ax, lon, lat, rh, mslp, hght_1000, hght_500, model,
     A python function to plot a surface plot like the one in the
     lower right of the HDWX 4-panel plot
   Inputs:
-    ax        : Axis to plot on
-    lon       : Longitude values for plot
-    lat       : Latitude values for plot
-    rh        : Relative humidity at 700 hPa
+    ax        : A GeoAxes object for axes to plot data on
+    xx        : x-values for plot
+    yy        : y-values for plot
+    rh        : Reyyive humidity at 700 hPa
     mslp      : Mean sea-level pressure
     hght_1000 : Height of the 1000 hPa 
     hght_500  : Height of the 500 hPa 
@@ -45,16 +45,16 @@ def plot_srfc_rh_mslp_thick( ax, lon, lat, rh, mslp, hght_1000, hght_500, model,
   Keywords:
     u : u-wind components for wind barbs
     v : v-wind components for wind barbs
+    All keywords accecpted by plotting methods
   Outputs:
     Returns the filled contour, contour, and colorbar objects
   '''
   log = logging.getLogger(__name__);
   log.info('Creating surface hPa plot')
-  projection = kwargs.pop( 'projection', ccrs.PlateCarree() );                  # Get default data projection
-  
-  xyz = ax.projection.transform_points(projection, lon.m, lat.m);               # Project longitude/latitude to map; cuts down on projecting multiple times
-  xx  = xyz[:,:,0];                                                             # Get re-projected longitudes
-  yy  = xyz[:,:,1];                                                             # Get re-projected latitudes
+
+  transform = kwargs.pop( 'transform', None );                                  # Get transformation for x- and y-values
+  if transform is not None:                                                     # If transform is not None, then we must transform the points for plotting
+    xx, yy = xy_transform( ax, transform, xx, yy )
 
   ax, scale = plot_basemap(ax);                                                 # Set up the basemap, get updated axis and map scale
 

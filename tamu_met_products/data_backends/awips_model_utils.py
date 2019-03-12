@@ -5,6 +5,8 @@ from metpy.units import units
 from metpy.calc import absolute_vorticity, lat_lon_grid_deltas;
 from awips.dataaccess import DataAccessLayer as DAL;
 
+iso = '%Y-%m-%d %H:%M:%S';  # ISO format for date
+
 
 def awips_fcst_times( request ):
   '''
@@ -22,7 +24,7 @@ def awips_fcst_times( request ):
   cycles    = DAL.getAvailableTimes(request, True);                             # Get forecast cycles
   times     = DAL.getAvailableTimes(request)                                    # Get forecast times
   times     = DAL.getForecastRun(cycles[-1], times);                            # Get forecast times in latest cycle
-  initTime  = datetime.fromisoformat( str(times[0]) );                          # Reference time; i.e., initialization time
+  initTime  = datetime.strptime( str(times[0]), iso );                          # Reference time; i.e., initialization time
   fcstTimes = [initTime + timedelta( seconds=t.getFcstTime() ) for t in times]; # Get all forecast times
   return initTime, fcstTimes, times                                             # Return forecast runs for latest cycle
 

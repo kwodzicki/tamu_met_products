@@ -21,5 +21,13 @@
   "barb_Opts" : {
       "linewidth" :  0.25,
       "length"    :  6.0
+  },
+  "subplot_adjust" : {
+      "left"   : 0.005, 
+      "bottom" : 0.050, 
+      "right"  : 0.995, 
+      "top"    : 1.000, 
+      "wspace" : 0.050, 
+      "hspace" : 0.125
   }
 }
