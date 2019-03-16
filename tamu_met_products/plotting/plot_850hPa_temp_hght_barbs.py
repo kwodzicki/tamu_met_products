@@ -4,9 +4,8 @@ import cartopy.crs as ccrs;
 from .plot_utils import add_colorbar, plot_barbs, plot_basemap, baseLabel, xy_transform;
 from . import color_maps;
 
-
-dir = os.path.dirname( os.path.realpath(__file__) );
-with open( os.path.join( dir, 'plot_opts.json' ), 'r' ) as fid:
+dir = os.path.dirname( os.path.dirname(__file__))
+with open( os.path.join(dir, 'plot_opts.json'), 'r' ) as fid:
   opts = json.load(fid);
 
 ################################################################################
