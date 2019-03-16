@@ -54,9 +54,9 @@ def plot_srfc_rh_mslp_thick( ax, xx, yy, rh, mslp, hght_1000, hght_500, model, i
 
   transform = kwargs.pop( 'transform', None );                                  # Get transformation for x- and y-values
   if transform is not None:                                                     # If transform is not None, then we must transform the points for plotting
-    xx, yy = xy_transform( ax, transform, xx, yy )
+    xx, yy = xy_transform( ax.projection, transform, xx, yy )
 
-  ax, scale = plot_basemap(ax);                                                 # Set up the basemap, get updated axis and map scale
+  ax, scale = plot_basemap(ax, **kwargs);                                       # Set up the basemap, get updated axis and map scale
 
   thick = hght_500 - hght_1000;                                                 # Compute thickness
   log.info('Plotting thickness')

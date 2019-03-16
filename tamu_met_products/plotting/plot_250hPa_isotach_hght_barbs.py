@@ -6,8 +6,11 @@ from metpy.calc import wind_speed;
 from .plot_utils import add_colorbar, plot_barbs, plot_basemap, baseLabel, xy_transform;
 from . import color_maps;
 
-dir = os.path.dirname( os.path.realpath(__file__) );
-with open( os.path.join( dir, 'plot_opts.json' ), 'r' ) as fid:
+# dir = os.path.dirname( os.path.realpath(__file__) );
+# with open( os.path.join( dir, 'plot_opts.json' ), 'r' ) as fid:
+#   opts = json.load(fid);
+dir = os.path.dirname( os.path.dirname(__file__))
+with open( os.path.join(dir, 'plot_opts.json'), 'r' ) as fid:
   opts = json.load(fid);
   
 
@@ -39,9 +42,9 @@ def plot_250hPa_isotach_hght_barbs( ax, xx, yy, u, v, hght, model, initTime, fcs
 
   transform = kwargs.pop( 'transform', None );                                  # Get transformation for x- and y-values
   if transform is not None:                                                     # If transform is not None, then we must transform the points for plotting
-    xx, yy = xy_transform( ax, transform, xx, yy )
+    xx, yy = xy_transform( ax.projection, transform, xx, yy )
 
-  ax, scale = plot_basemap(ax);                                                 # Set up the basemap, get updated axis and map scale
+  ax, scale = plot_basemap(ax, **kwargs);                                       # Set up the basemap, get updated axis and map scale
 
   log.debug('Plotting winds')
   isotach = wind_speed( u, v ).to('kts');                                       # Compute windspeed and convert to knots

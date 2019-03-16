@@ -38,9 +38,10 @@ def plot_850hPa_temp_hght_barbs( ax, xx, yy, temp, hght, model, initTime, fcstTi
 
   transform = kwargs.pop( 'transform', None );                                  # Get transformation for x- and y-values
   if transform is not None:                                                     # If transform is not None, then we must transform the points for plotting
-    xx, yy = xy_transform( ax, transform, xx, yy )
+    xx, yy = xy_transform( ax.projection, transform, xx, yy )
 
-  ax, scale = plot_basemap(ax);                                                 # Set up the basemap, get updated axis and map scale
+  ax, scale = plot_basemap(ax, **kwargs);                                       # Set up the basemap, get updated axis and map scale
+
   log.info('Plotting surface temperature')
 
   cf = ax.contourf(xx, yy, temp.to('degC'), 

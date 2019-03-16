@@ -25,6 +25,8 @@ def forecast_4_panel( data, initTime, fcstTime, **kwargs):
   Inputs:
     data : A dictionary (should be xarray in future?) with all variables
             required for the plots. Must set up a convention in the future
+    initTime : A datetime object with the model initialize time
+    fcstTime : A datetime object with the model forecast time
   Keywords:
     None.
   Outputs:
@@ -51,7 +53,7 @@ def forecast_4_panel( data, initTime, fcstTime, **kwargs):
   transform = kwargs.pop('transform', None)
   if transform is not None:
     data['lon'], data['lat'] = xy_transform(
-      axlist[0], transform, data['lon'], data['lat']
+      map_projection, transform, data['lon'], data['lat']
     );                                                                          # Transform the data; saves some time
 
   plot_500hPa_vort_hght_barbs( 

@@ -104,7 +104,7 @@ def plot_barbs( ax, scale, xx, yy, u, v ):
   )
 
 ################################################################################
-def xy_transform( ax, transform, xx, yy):
+def xy_transform( proj, transform, xx, yy):
   '''
   Name:
     xy_tranform
@@ -112,7 +112,7 @@ def xy_transform( ax, transform, xx, yy):
     A helper function to transform x- and y-values from the
     'transform' projection to the GeoAxes 'ax' projection.
   Inputs:
-    ax        : A GeoAxes object to project the data to
+    proj      : Projection to project data to
     transform : A cartopy projection for the x- and y-values
     xx        : X-values; typically longitudes
     yy        : Y-values; typically latitudes
@@ -121,7 +121,7 @@ def xy_transform( ax, transform, xx, yy):
   Keywords:
     None.
   '''
-  if hasattr(xx, 'magnitude'): xx = xx.magnitude;                             # IF has a magnitude attribute, then is a Quantity object so get magnitude
-  if hasattr(yy, 'magnitude'): yy = yy.magnitude;                             # IF has a magnitude attribute, then is a Quantity object so get magnitude
-  xyz = ax.projection.transform_points(transform, xx, yy);                    # Project x- and y-values to map; cuts down on projecting multiple times
+  if hasattr(xx, 'magnitude'): xx = xx.magnitude;                               # IF has a magnitude attribute, then is a Quantity object so get magnitude
+  if hasattr(yy, 'magnitude'): yy = yy.magnitude;                               # IF has a magnitude attribute, then is a Quantity object so get magnitude
+  xyz = proj.transform_points(transform, xx, yy);                               # Project x- and y-values to map; cuts down on projecting multiple times
   return xyz[:,:,0], xyz[:,:,1]

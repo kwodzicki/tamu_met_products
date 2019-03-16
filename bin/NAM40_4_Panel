@@ -1,5 +1,0 @@
-#!/usr/bin/env python3
-
-from tamu_met_products.nam40_4_panel import NAM40_4_Panel
-
-x = NAM40_4_Panel();
