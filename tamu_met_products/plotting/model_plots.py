@@ -7,24 +7,11 @@ from metpy.calc import wind_speed;
 
 from .plot_utils import initFigure, add_colorbar, plot_barbs, plot_basemap, baseLabel, xy_transform, getMapExtentScale;
 from . import color_maps;
+from . import contour_levels;
 
 dir = os.path.dirname( os.path.dirname(__file__) );
 with open( os.path.join(dir, 'plot_opts.json'), 'r' ) as fid:
   opts = json.load(fid);
-
-thickness_lvls  = np.arange(-25, 26) 
-thickness_width = (thickness_lvls == 0)*2 + 1;
-
-thickness_clr   = np.full(thickness_lvls.size, 'r')
-thickness_clr[thickness_lvls < 0] = 'b'
-
-thickness_sty   = np.full(thickness_lvls.size, 'dashed')
-thickness_sty[thickness_lvls == 0] = 'solid'
-
-thickness_lvls  = thickness_lvls * 40 + 5500
-
-
-mslp_lvls = np.arange(-25, 26) * 4 + 1016
 
 ################################################################################
 def plot_srfc_rh_mslp_thick( ax, xx, yy, rh, mslp, hght_1000, hght_500, model, initTime, fcstTime, u=None, v=None, **kwargs ):
@@ -65,24 +52,21 @@ def plot_srfc_rh_mslp_thick( ax, xx, yy, rh, mslp, hght_1000, hght_500, model, i
   thick = hght_500 - hght_1000;                                                 # Compute thickness
   log.info('Plotting thickness')
   cf = ax.contourf(xx, yy, rh, 
-                      cmap      = color_maps.surface['cmap'], 
-                      norm      = color_maps.surface['norm'],
-                      levels    = color_maps.surface['lvls'],
+                      cmap   = color_maps.surface['cmap'], 
+                      norm   = color_maps.surface['norm'],
+                      levels = color_maps.surface['lvls'],
                       **opts['contourf_Opts'])
-  c = ax.contour(xx, yy, thick, 
-       levels     = thickness_lvls,
-       linewidths = thickness_width,
-       linestyles = thickness_sty,
-       colors     = thickness_clr  
-  );                                                                            # Draw red/blue dashed lines
+  cbar = add_colorbar( cf, color_maps.surface['lvls'], **kwargs );          # Add colorbar
+
+  c = ax.contour(xx, yy, thick, **contour_levels.thickness);                    # Draw red/blue dashed lines
   ax.clabel(c, **opts['clabel_Opts']);                                          # Update labels
 
   log.debug('Plotting geopotential height')
   c = ax.contour(xx, yy, mslp.to('hPa'), 
-       levels    = mslp_lvls, 
-       **opts['contour_Opts'])
+         levels = contour_levels.mslp, 
+         **opts['contour_Opts']
+      )
   ax.clabel(c, **opts['clabel_Opts'])
-  cbar = add_colorbar( cf, color_maps.surface['lvls'], **kwargs );          # Add colorbar
 
   txt = baseLabel( model, initTime, fcstTime );                                 # Get base string for label
   txt.append('700-hPa RH, MSLP, 1000--500-hPa THICK');                          # Update label
@@ -131,20 +115,23 @@ def plot_850hPa_temp_hght_barbs( ax, xx, yy, temp, hght, model, initTime, fcstTi
   log.info('Plotting surface temperature')
 
   cf = ax.contourf(xx, yy, temp.to('degC'), 
-                      cmap      = color_maps.temp_850['cmap'], 
-                      norm      = color_maps.temp_850['norm'],
-                      levels    = color_maps.temp_850['lvls'],
+                      cmap   = color_maps.temp_850['cmap'], 
+                      norm   = color_maps.temp_850['norm'],
+                      levels = color_maps.temp_850['lvls'],
                       **opts['contourf_Opts'])
+  cbar = add_colorbar( cf, color_maps.temp_850['lvls'], **kwargs );             # Add colorbar
 
   c1 = ax.contour(xx, yy, temp.to('degC'), 
          levels = 0, colors = (0,0,1), linewidths = 2);                         # Contour for 0 degree C line
 
-  plot_barbs( ax, xx, yy, u, v );                                        # Plot wind barbs
+  plot_barbs( ax, xx, yy, u, v );                                               # Plot wind barbs
   
   log.debug('Plotting geopotential height')
-  c2 = ax.contour(xx, yy, hght, **opts['contour_Opts']);                        # Contour the geopotential height
+  c2 = ax.contour(xx, yy, hght, 
+          levels = contour_levels.heights['850'],
+          **opts['contour_Opts']
+      );                                                                        # Contour the geopotential height
   ax.clabel(c2, **opts['clabel_Opts']);                                         # Change contour label settings
-  cbar = add_colorbar( cf, color_maps.temp_850['lvls'], **kwargs );         # Add colorbar
 
   txt = baseLabel( model, initTime, fcstTime );                                 # Get base string for label
   txt.append('850-hPa HEIGHTS, WINDS, TEMP (C)');                               # Update label
@@ -194,17 +181,20 @@ def plot_500hPa_vort_hght_barbs( ax, xx, yy, vort, hght, model, initTime, fcstTi
   log.debug('Plotting vorticity') 
   if vort.max().m < 1.0: vort *= 1.0e5;                                         # If vorticity values too small, scale them
   cf = ax.contourf(xx, yy, vort, 
-                         cmap      = color_maps.vort_500['cmap'], 
-                         norm      = color_maps.vort_500['norm'],
-                         levels    = color_maps.vort_500['lvls'],
+                         cmap   = color_maps.vort_500['cmap'], 
+                         norm   = color_maps.vort_500['norm'],
+                         levels = color_maps.vort_500['lvls'],
                          **opts['contourf_Opts'])
+  cbar = add_colorbar( cf, color_maps.vort_500['lvls'], **kwargs );             # Add a color bar
 
-  plot_barbs( ax, xx, yy, u, v );                                        # Plot wind barbs
+  plot_barbs( ax, xx, yy, u, v );                                               # Plot wind barbs
     
   log.debug('Plotting geopotential height')
-  c = ax.contour(xx, yy, hght, **opts['contour_Opts']);                         # Contour the geopotential height
+  c = ax.contour(xx, yy, hght, 
+         levels = contour_levels.heights['500'],
+         **opts['contour_Opts']
+      );                                                                        # Contour the geopotential height
   ax.clabel(c, **opts['clabel_Opts']);                                          # Change contour label settings
-  cbar = add_colorbar( cf, color_maps.vort_500['lvls'], **kwargs )          # Add a color bar
   
   txt = baseLabel( model, initTime, fcstTime );                                 # Get base string for label
   txt.append('500-hPa HEIGHTS, WINDS, ABS VORT');                               # Update Label 
@@ -253,17 +243,20 @@ def plot_250hPa_isotach_hght_barbs( ax, xx, yy, u, v, hght, model, initTime, fcs
   log.debug('Plotting winds')
   isotach = wind_speed( u, v ).to('kts');                                       # Compute windspeed and convert to knots
   cf = ax.contourf(xx, yy, isotach, 
-                      cmap      = color_maps.wind_250['cmap'], 
-                      norm      = color_maps.wind_250['norm'],
-                      levels    = color_maps.wind_250['lvls'],
+                      cmap   = color_maps.wind_250['cmap'], 
+                      norm   = color_maps.wind_250['norm'],
+                      levels = color_maps.wind_250['lvls'],
                       **opts['contourf_Opts'])
+  cbar = add_colorbar( cf, color_maps.wind_250['lvls'], **kwargs );             # Add a color bar
 
-  plot_barbs( ax, xx, yy, u, v );                                        # Plot wind barbs
+  plot_barbs( ax, xx, yy, u, v );                                               # Plot wind barbs
  
   log.debug('Plotting geopotential height')
-  c = ax.contour(xx, yy, hght, **opts['contour_Opts']);                         # Contour the geopotential height
+  c = ax.contour(xx, yy, hght, 
+         levels = contour_levels.heights['250'],
+         **opts['contour_Opts']
+      );                                                                        # Contour the geopotential height
   ax.clabel(c, **opts['clabel_Opts']);                                          # Change contour label settings
-  cbar = add_colorbar( cf, color_maps.wind_250['lvls'], **kwargs );         # Add a color bar
 
   txt = baseLabel( model, initTime, fcstTime );                                 # Get base string for label
   txt.append('250-hPa HEIGHTS, WINDS, ISOTACHS (KT)');                          # Update label
