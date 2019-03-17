@@ -1,35 +1,35 @@
 import logging
 import os, json;
+import matplotlib.pyplot as plt;
+import cartopy.crs as ccrs;
 import cartopy.feature as cfeature
-from matplotlib.pyplot import colorbar;
 
-dir = os.path.dirname( os.path.realpath(__file__) );
+dir = os.path.dirname( os.path.dirname(__file__) );
 with open( os.path.join( dir, 'plot_opts.json' ), 'r' ) as fid:
   opts = json.load(fid);
-  
+
 ################################################################################
-def baseLabel(model, initTime, fcstTime):
-  '''
-  Name:
-    baseLabel
-  Purpose:
-    A python function create time labels for plot
-  Inputs:
-    model    : Name of the model
-    initTime : Datetime object with model initialization time
-    fcstTime : Datetime object with model forecast time
-  Keywords:
-    None
-  Outputs:
-    Returns two element list
-  '''  
-  initFMT  = '%y%m%d/%H%M'
-  fcstFMT  = '%a %y%m%d/%H%M'
-  dTime    = int( (fcstTime - initTime).total_seconds() / 3600.0 )
-  initTime = '{}F{:03d}'.format( initTime.strftime( initFMT ), dTime )
-  fcstTime = '{}V{:03d}'.format( fcstTime.strftime( fcstFMT ), dTime )
-  return ['{} FORECAST INIT {}'.format(    model, initTime ),
-         '{:03d}-HR FCST VALID {}'.format( dTime, fcstTime )]
+def initFigure(nrows, ncols, **kwargs):
+  if 'map_projection' in kwargs:                                                # If a map projection was input
+    mapProj = kwargs.pop('map_projection');                                     # Use that projection
+  else:                                                                         # Else
+    mapProj  = getattr(ccrs, opts['projection']['name'] );                      # Default map projection from plotting options
+    centLong = kwargs.pop('central_longitude', 
+                          opts["projection"]["central_longitude"]);             # Default central longitude of projection
+    centLat  = kwargs.pop('central_latitude',  
+                          opts["projection"]["central_latitude"]);              # Default central latitude of projection
+    mapProj  = mapProj( central_longitude = centLong, 
+                        central_latitude  = centLat);                           # Projection of the figure
+
+  if "figsize" in kwargs:  
+    opts["figure_opts"]["figsize"] = kwargs["figsize"];
+  if "dpi" in kwargs:
+    opts["figure_opts"]["dpi"] = kwargs["dpi"];
+
+  fig, ax  = plt.subplots(nrows=nrows, ncols=ncols, **opts["figure_opts"], 
+                          subplot_kw={'projection': mapProj});                  # Set up figure with one (1) subplot
+  plt.subplots_adjust( **opts['subplot_adjust'] );                              # Set up subplot margins
+  return fig, ax
 
 ################################################################################
 def plot_basemap(ax, **kwargs):
@@ -73,6 +73,30 @@ def plot_basemap(ax, **kwargs):
   return ax, scale
 
 ################################################################################
+def baseLabel(model, initTime, fcstTime):
+  '''
+  Name:
+    baseLabel
+  Purpose:
+    A python function create time labels for plot
+  Inputs:
+    model    : Name of the model
+    initTime : Datetime object with model initialization time
+    fcstTime : Datetime object with model forecast time
+  Keywords:
+    None
+  Outputs:
+    Returns two element list
+  '''  
+  initFMT  = '%y%m%d/%H%M'
+  fcstFMT  = '%a %y%m%d/%H%M'
+  dTime    = int( (fcstTime - initTime).total_seconds() / 3600.0 )
+  initTime = '{}F{:03d}'.format( initTime.strftime( initFMT ), dTime )
+  fcstTime = '{}V{:03d}'.format( fcstTime.strftime( fcstFMT ), dTime )
+  return ['{} FORECAST INIT {}'.format(    model, initTime ),
+         '{:03d}-HR FCST VALID {}'.format( dTime, fcstTime )]
+
+################################################################################
 def add_colorbar( mappable, ax, ticks, **kwargs ):
   log = logging.getLogger(__name__);
   log.debug('Creating color bar')
@@ -82,7 +106,7 @@ def add_colorbar( mappable, ax, ticks, **kwargs ):
   ax_w  /=  4.0 
   ax_h  /= 40.0
   cb_ax  = ax.figure.add_axes( (ax_x0, ax_y0-3*ax_h, ax_w, ax_h) )
-  cbar   = colorbar(mappable, cax=cb_ax, ticks=ticks, **opts['colorbar_Opts'])
+  cbar   = plt.colorbar(mappable, cax=cb_ax, ticks=ticks, **opts['colorbar_Opts'])
   cbar.ax.xaxis.set_ticks_position('top');                                      # Place labels on top of color bar
   if fontsize:
     x_ticks = cbar.ax.get_xticklabels();
@@ -96,12 +120,35 @@ def add_colorbar( mappable, ax, ticks, **kwargs ):
   return cbar;
 
 ################################################################################
-def plot_barbs( ax, scale, xx, yy, u, v ):
-  skip = int( round(scale / abs(xx[0,1]-xx[0,0]) ) )//2
-  ax.barbs( xx[::skip,::skip],         yy[::skip,::skip], 
+def plot_barbs( ax, xx, yy, u, v ):
+  '''
+  Name:
+    plot_barbs
+  Purpose:
+    A python funciton to plot wind barbs on a GeoAxes map. Will plot
+    barbs roughly every 2 degrees
+  Inputs:
+    ax     : GeoAxes to plot wind barbs on
+    xx     : x-values (in map coordinates) of where to plot barbs
+    yy     : y-values (in map coordinates) of where to plot barbs
+    u      : u-wind values; Must be pint Quantity
+    v      : v-wind values; Must be pint Quantity
+  Keywords:
+    None.
+  Outputs:
+    None.
+  '''
+  log = logging.getLogger(__name__);                                            # Logger for the function
+  log.debug( 'Computing skip for winds at 2 degree spacing' )
+  diff, skip = 0, 0;                                                            # Initialize difference between x-values and skip
+  while diff < 2.0e5:                                                           # While the difference is less than roughly 2 degrees
+    skip += 1;                                                                  # Increment skip
+    diff  = abs(xx[0,skip] - xx[0,0]);                                          # Compute new difference
+  log.debug( 'Skipping every {} values'.format(skip) )
+  ax.barbs( xx[::skip,::skip], yy[::skip,::skip], 
             u.to('kts')[::skip,::skip].m, v.to('kts')[::skip,::skip].m, 
             **opts['barb_Opts']
-  )
+  );                                                                            # Plot the barbs at the specified skip
 
 ################################################################################
 def xy_transform( proj, transform, xx, yy):

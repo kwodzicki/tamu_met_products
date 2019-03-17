@@ -24,10 +24,19 @@
   },
   "subplot_adjust" : {
       "left"   : 0.005, 
-      "bottom" : 0.050, 
+      "bottom" : 0.075, 
       "right"  : 0.995, 
-      "top"    : 1.000, 
+      "top"    : 0.995, 
       "wspace" : 0.050, 
       "hspace" : 0.125
+  },
+  "figure_opts" : {
+    "figsize" : [16,9],
+    "dpi"     : 120
+  },
+  "projection" : {
+    "name"              : "LambertConformal",
+    "central_latitude"  :   40.0,
+    "central_longitude" : -100.0
   }
 }

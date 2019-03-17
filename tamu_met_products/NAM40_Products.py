@@ -7,15 +7,17 @@ import cartopy.crs as ccrs;
 from .data_backends.awips_model_utils import awips_fcst_times, awips_model_base;
 from .data_backends.awips_models import NAM40;
 
-from .plotting.plot_utils import xy_transform;
+from .plotting.plot_utils       import initFigure, xy_transform;
 from .plotting.forecast_4_panel import forecast_4_panel
-from .plotting.plot_srfc_rh_mslp_thick        import plot_srfc_rh_mslp_thick
-from .plotting.plot_850hPa_temp_hght_barbs    import plot_850hPa_temp_hght_barbs;
-from .plotting.plot_500hPa_vort_hght_barbs    import plot_500hPa_vort_hght_barbs
-from .plotting.plot_250hPa_isotach_hght_barbs import plot_250hPa_isotach_hght_barbs
+from .plotting.model_plots      import (
+  plot_srfc_rh_mslp_thick,
+  plot_850hPa_temp_hght_barbs,
+  plot_500hPa_vort_hght_barbs,
+  plot_250hPa_isotach_hght_barbs
+)
 
 dir = os.path.dirname( os.path.realpath(__file__) );
-with open( os.path.join( dir, 'plotting', 'plot_opts.json' ), 'r' ) as fid:
+with open( os.path.join( dir, 'plot_opts.json' ), 'r' ) as fid:
   opts = json.load(fid);
 
 def NAM40_Products( outdir = None, dpi = 120, interval = 6 ):
@@ -94,8 +96,7 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 6 ):
       log.info( 'Surface file exists, skipping: {}'.format(fcstTimes[i]) )
     else:
       log.info( 'Creating surface image for: {}'.format(fcstTimes[i]) )
-      fig  = plt.figure( figsize=(16, 9), tight_layout=True )
-      ax   = fig.add_subplot(111, projection = mapProj)
+      fig, ax = initFigure(1, 1)
 
       plot_srfc_rh_mslp_thick(
         ax, data['lon'], data['lat'],
@@ -112,8 +113,7 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 6 ):
       log.info( '850-hPa file exists, skipping: {}'.format(fcstTimes[i]) )
     else:
       log.info( 'Creating 850-hPa image for: {}'.format(fcstTimes[i]) )
-      fig  = plt.figure( figsize=(16, 9), tight_layout=True )
-      ax   = fig.add_subplot(111, projection = mapProj)
+      fig, ax = initFigure(1, 1)
 
       plot_850hPa_temp_hght_barbs(
         ax, data['lon'], data['lat'],
@@ -130,8 +130,7 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 6 ):
       log.info( '500-hPa file exists, skipping: {}'.format(fcstTimes[i]) )
     else:
       log.info( 'Creating 500-hPa image for: {}'.format(fcstTimes[i]) )
-      fig  = plt.figure( figsize=(16, 9), tight_layout=True )
-      ax   = fig.add_subplot(111, projection = mapProj)
+      fig, ax = initFigure(1, 1)
 
       plot_500hPa_vort_hght_barbs( 
         ax, data['lon'], data['lat'],
@@ -148,8 +147,7 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 6 ):
       log.info( '250-hPa file exists, skipping: {}'.format(fcstTimes[i]) )
     else:
       log.info( 'Creating 250-hPa image for: {}'.format(fcstTimes[i]) )
-      fig  = plt.figure( figsize=(16, 9), tight_layout=True )
-      ax   = fig.add_subplot(111, projection = mapProj)
+      fig, ax = initFigure(1, 1)
 
       plot_250hPa_isotach_hght_barbs(
         ax, data['lon'], data['lat'],
