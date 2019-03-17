@@ -32,6 +32,55 @@ def initFigure(nrows, ncols, **kwargs):
   return fig, ax
 
 ################################################################################
+def getMapExtentScale(ax, xx = None, yy = None, scale = None):
+  '''
+  Name:
+    getMapExtentScale
+  Purpose:
+    A python function to determine map extent based on data size
+  Inputs:
+    ax    : GeoAxis object to plot data on
+  Keywords:
+    xx  : x-values of data to plot. MUST BE USED WITH YY.
+           If input, will be used to determine best scaling for x & y.
+           Will override the scale keyword; i.e., if you want a specific
+           scaling, use ONLY the scale keyword
+    xx  : y-values of data to plot. MUST BE USED WITH xx.
+           If input, will be used to determine best scaling for x & y.
+           Will override the scale keyword; i.e., if you want a specific
+           scaling, use ONLY the scale keyword
+    scale : Set scale of the plot where scale is distance in meters that
+             one (1) centimeter on the plot will covert. Will determine 
+             extent based on plotting area.
+  Outputs:
+    Returns the map extent and map scale
+  '''  
+  log = logging.getLogger(__name__)
+
+  fig_w,fig_h = ax.figure.get_size_inches() * 2.54;                             # Get size of figure in centimeters
+  log.debug( 'Figure size: {:5.2f}x{:5.2f}'.format( fig_w, fig_h) );
+
+  ax_x0,ax_y0,ax_w,ax_h = ax._position.bounds;                                  # Get size of axes relative to figure size
+  log.debug( 'Axis size:   {:5.3f}x{:5.3f}, {:5.3f}x{:5.3f}'.format( ax_x0, ax_y0, ax_w,  ax_h) );
+  
+  if (xx is not None) and (yy is not None):
+    msgFMT  = None;
+    x_scale = (xx.max()-xx.min()) / (fig_w * ax_w)
+    y_scale = (yy.max()-yy.min()) / (fig_h * ax_h)
+    if scale is not None:
+      msgFMT = 'Changing user defined scale: {:8.3f} -> {}'.format( scale, '{:8.3f}' )
+    scale   = x_scale if (x_scale >= y_scale) else y_scale;
+    if msgFMT is not None:
+      log.info( msgFMT.format(scale) )
+
+  dx      = scale * (fig_w * ax_w) / 2.0;                                       # Multiply figure width by axis width, divide by 2 and multiply by scale
+  dy      = scale * (fig_h * ax_h) / 2.0;                                       # Multiply figure height by axis height, divide by 2 and multiply by scale
+  extent  = (-dx, dx, -dy, dy)
+  log.debug( 'Map Extent:   {:5.3f}, {:5.3f}, {:5.3f}, {:5.3f}'.format( *extent ) );
+  
+  return extent, scale
+
+################################################################################
 def plot_basemap(ax, **kwargs):
   '''
   Name:
@@ -43,34 +92,28 @@ def plot_basemap(ax, **kwargs):
   Keywords:
     Arguments for set_extent, and cartopy cfeatures
   Outputs:
-    Returns the update axis object
+    Returns the update axis object and map extent
   '''  
   log        = logging.getLogger(__name__)
-  scale      = kwargs.pop( 'scale',      5.0e5 );
   resloution = kwargs.pop( 'resolution', '50m' );
   linewidth  = kwargs.pop( 'linewidth',  0.5 );
 
-  ax.outline_patch.set_visible(False);                                          # Remove frame from plot
-  fig_w,fig_h = ax.figure.get_size_inches() * 2.54;                             # Get size of figure in centimeters
-  log.debug( 'Figure size: {:5.2f}x{:5.2f}'.format( fig_w, fig_h) );
-
-  ax_x0,ax_y0,ax_w,ax_h = ax._position.bounds;                                  # Get size of axes relative to figure size
-  log.debug( 'Axis size:   {:5.3f}x{:5.3f}, {:5.3f}x{:5.3f}'.format( ax_x0, ax_y0, ax_w,  ax_h) );
-
-  dx = scale * (fig_w * ax_w) / 2.0;                                            # Multiply figure width by axis width, divide by 2 and multiply by scale
-  dy = scale * (fig_h * ax_h) / 2.0;                                            # Multiply figure height by axis height, divide by 2 and multiply by scale
- 
-  log.debug( 'Map Extent:   {:5.3f}, {:5.3f}, {:5.3f}, {:5.3f}'.format( -dx, dx, -dy, dy) );
+  if 'extent' in kwargs:
+    extent = kwargs['extent'];
+  else:
+    kwargs['scale'] = kwargs.pop( 'scale', 5.0e5 );
+    extent, scale = getMapExtentScale( ax, scale = kwargs['scale'] );
 
   log.debug('Setting axis extent')  
-  ax.set_extent( (-dx, dx, -dy, dy), ax.projection );                           # Set axis extent
+  ax.set_extent( extent, ax.projection );                           # Set axis extent
   log.debug('Adding coast line')  
   ax.add_feature(cfeature.COASTLINE.with_scale(resloution), linewidth=linewidth)
   log.debug('Adding states')  
   ax.add_feature(cfeature.STATES, linewidth=linewidth)
   log.debug('Adding borders')  
   ax.add_feature(cfeature.BORDERS, linewidth=linewidth)
-  return ax, scale
+  ax.outline_patch.set_visible(False);                                          # Remove frame from plot
+  return ax
 
 ################################################################################
 def baseLabel(model, initTime, fcstTime):
@@ -97,27 +140,46 @@ def baseLabel(model, initTime, fcstTime):
          '{:03d}-HR FCST VALID {}'.format( dTime, fcstTime )]
 
 ################################################################################
-def add_colorbar( mappable, ax, ticks, **kwargs ):
+def add_colorbar( mappable, ticks, **kwargs ):
+  '''
+  Name:
+    add_colorbar
+  Purpose:
+    A python function to add a colorbar to a plot
+  Inputs:
+    mappable  : The object to add color bar to; i.e., object returned
+                 by a call to ax.contourf()
+    ticks     : Ticks to draw on colorbar
+  Ouputs:
+    Returns a colorbar object
+  Keywords:
+    fontsize : Font size for color bar; Default is 8
+    title    : Colorbar title; Default is None
+  '''
   log = logging.getLogger(__name__);
   log.debug('Creating color bar')
-  fontsize = kwargs.pop('fontsize', 8);                                         # Pop off fontsize from keywords
-  title    = kwargs.pop('title',    None);
-  ax_x0, ax_y0, ax_w, ax_h = ax._position.bounds;                               # Get size of axes relative to figure size
-  ax_w  /=  4.0 
-  ax_h  /= 40.0
-  cb_ax  = ax.figure.add_axes( (ax_x0, ax_y0-3*ax_h, ax_w, ax_h) )
-  cbar   = plt.colorbar(mappable, cax=cb_ax, ticks=ticks, **opts['colorbar_Opts'])
-  cbar.ax.xaxis.set_ticks_position('top');                                      # Place labels on top of color bar
-  if fontsize:
-    x_ticks = cbar.ax.get_xticklabels();
-    y_ticks = cbar.ax.get_yticklabels()
-    cbar.ax.set_xticklabels(x_ticks, fontsize=fontsize)
-    cbar.ax.set_yticklabels(y_ticks, fontsize=fontsize)
+  fontsize  = kwargs.pop('fontsize', 8);                                         # Pop off fontsize from keywords
+  title     = kwargs.pop('title',    None);
+  ax        = mappable.ax;                                                      # Get axis from the mappable
+  txt       = ax.text(0.5, 0.5, 'X');                                           # Write a capital 'X' so that we can figure out how big text is on plot
+  renderer  = ax.figure.canvas.get_renderer();                                  # Renderer of the object
+  txt_bbox  = txt.get_window_extent( renderer = renderer );                     # Get bounding box of the text
+  cbHeight  = txt_bbox.height / ax.figure.bbox.height;                          # Set cbHeight to height of the text in normalized coordinates
+  txt.remove( );                                                                # Remove the text from the image
 
-  if title:
-    cbar.set_label(title, size=fontsize)
-    
-  return cbar;
+  ax_x0, ax_y0, ax_w, ax_h = ax._position.bounds;                               # Get size of axes relative to figure size
+  ax_w  /=  4.0;                                                                # Divide axis width by 4
+  cb_ax  = ax.figure.add_axes( (ax_x0, ax_y0-2.0*cbHeight, ax_w, cbHeight) );   # Add axis for the color bar
+  cbar   = plt.colorbar(mappable, cax=cb_ax, ticks=ticks, **opts['colorbar']);  # Generate the colorbar
+  cbar.ax.xaxis.set_ticks_position('top');                                      # Place labels on top of color bar
+  x_ticks = cbar.ax.get_xticklabels();                                          # Get x-axis tick labels of color bar
+  y_ticks = cbar.ax.get_yticklabels();                                          # Get y-axis tick labels of color bar
+  cbar.ax.set_xticklabels(x_ticks, fontsize=fontsize);                          # Set fontsize for colorbar x-axis labels
+  cbar.ax.set_yticklabels(y_ticks, fontsize=fontsize);                          # Set fontsize for colorbar y-axis labels
+
+  if title: cbar.set_label(title, size=fontsize)                                # Set colorbar title IF there was a title defined
+
+  return cbar;                                                                  # Return the colorbar object
 
 ################################################################################
 def plot_barbs( ax, xx, yy, u, v ):

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt;
 import cartopy.crs as ccrs;
 from metpy.calc import wind_speed;
 
-from .plot_utils import initFigure, add_colorbar, plot_barbs, plot_basemap, baseLabel, xy_transform;
+from .plot_utils import initFigure, add_colorbar, plot_barbs, plot_basemap, baseLabel, xy_transform, getMapExtentScale;
 from . import color_maps;
 
 dir = os.path.dirname( os.path.dirname(__file__) );
@@ -58,7 +58,9 @@ def plot_srfc_rh_mslp_thick( ax, xx, yy, rh, mslp, hght_1000, hght_500, model, i
   if transform is not None:                                                     # If transform is not None, then we must transform the points for plotting
     xx, yy = xy_transform( ax.projection, transform, xx, yy )
 
-  ax, scale = plot_basemap(ax, **kwargs);                                       # Set up the basemap, get updated axis and map scale
+  if 'extent' not in kwargs:
+    kwargs['extent'], scale = getMapExtentScale(ax, xx, yy)
+  ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
 
   thick = hght_500 - hght_1000;                                                 # Compute thickness
   log.info('Plotting thickness')
@@ -80,7 +82,7 @@ def plot_srfc_rh_mslp_thick( ax, xx, yy, rh, mslp, hght_1000, hght_500, model, i
        levels    = mslp_lvls, 
        **opts['contour_Opts'])
   ax.clabel(c, **opts['clabel_Opts'])
-  cbar = add_colorbar( cf, ax, color_maps.surface['lvls'], **kwargs );          # Add colorbar
+  cbar = add_colorbar( cf, color_maps.surface['lvls'], **kwargs );          # Add colorbar
 
   txt = baseLabel( model, initTime, fcstTime );                                 # Get base string for label
   txt.append('700-hPa RH, MSLP, 1000--500-hPa THICK');                          # Update label
@@ -122,7 +124,9 @@ def plot_850hPa_temp_hght_barbs( ax, xx, yy, temp, hght, model, initTime, fcstTi
   if transform is not None:                                                     # If transform is not None, then we must transform the points for plotting
     xx, yy = xy_transform( ax.projection, transform, xx, yy )
 
-  ax, scale = plot_basemap(ax, **kwargs);                                       # Set up the basemap, get updated axis and map scale
+  if 'extent' not in kwargs:
+    kwargs['extent'], scale = getMapExtentScale(ax, xx, yy)
+  ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
 
   log.info('Plotting surface temperature')
 
@@ -136,11 +140,11 @@ def plot_850hPa_temp_hght_barbs( ax, xx, yy, temp, hght, model, initTime, fcstTi
          levels = 0, colors = (0,0,1), linewidths = 2);                         # Contour for 0 degree C line
 
   plot_barbs( ax, xx, yy, u, v );                                        # Plot wind barbs
-
+  
   log.debug('Plotting geopotential height')
   c2 = ax.contour(xx, yy, hght, **opts['contour_Opts']);                        # Contour the geopotential height
   ax.clabel(c2, **opts['clabel_Opts']);                                         # Change contour label settings
-  cbar = add_colorbar( cf, ax, color_maps.temp_850['lvls'], **kwargs );         # Add colorbar
+  cbar = add_colorbar( cf, color_maps.temp_850['lvls'], **kwargs );         # Add colorbar
 
   txt = baseLabel( model, initTime, fcstTime );                                 # Get base string for label
   txt.append('850-hPa HEIGHTS, WINDS, TEMP (C)');                               # Update label
@@ -183,7 +187,9 @@ def plot_500hPa_vort_hght_barbs( ax, xx, yy, vort, hght, model, initTime, fcstTi
   if transform is not None:                                                     # If transform is not None, then we must transform the points for plotting
     xx, yy = xy_transform( ax.projection, transform, xx, yy )
 
-  ax, scale = plot_basemap(ax, **kwargs);                                       # Set up the basemap, get updated axis and map scale
+  if 'extent' not in kwargs:
+    kwargs['extent'], scale = getMapExtentScale(ax, xx, yy)
+  ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
 
   log.debug('Plotting vorticity') 
   if vort.max().m < 1.0: vort *= 1.0e5;                                         # If vorticity values too small, scale them
@@ -198,7 +204,7 @@ def plot_500hPa_vort_hght_barbs( ax, xx, yy, vort, hght, model, initTime, fcstTi
   log.debug('Plotting geopotential height')
   c = ax.contour(xx, yy, hght, **opts['contour_Opts']);                         # Contour the geopotential height
   ax.clabel(c, **opts['clabel_Opts']);                                          # Change contour label settings
-  cbar = add_colorbar( cf, ax, color_maps.vort_500['lvls'], **kwargs )          # Add a color bar
+  cbar = add_colorbar( cf, color_maps.vort_500['lvls'], **kwargs )          # Add a color bar
   
   txt = baseLabel( model, initTime, fcstTime );                                 # Get base string for label
   txt.append('500-hPa HEIGHTS, WINDS, ABS VORT');                               # Update Label 
@@ -240,7 +246,9 @@ def plot_250hPa_isotach_hght_barbs( ax, xx, yy, u, v, hght, model, initTime, fcs
   if transform is not None:                                                     # If transform is not None, then we must transform the points for plotting
     xx, yy = xy_transform( ax.projection, transform, xx, yy )
 
-  ax, scale = plot_basemap(ax, **kwargs);                                       # Set up the basemap, get updated axis and map scale
+  if 'extent' not in kwargs:
+    kwargs['extent'], scale = getMapExtentScale(ax, xx, yy)
+  ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
 
   log.debug('Plotting winds')
   isotach = wind_speed( u, v ).to('kts');                                       # Compute windspeed and convert to knots
@@ -255,7 +263,7 @@ def plot_250hPa_isotach_hght_barbs( ax, xx, yy, u, v, hght, model, initTime, fcs
   log.debug('Plotting geopotential height')
   c = ax.contour(xx, yy, hght, **opts['contour_Opts']);                         # Contour the geopotential height
   ax.clabel(c, **opts['clabel_Opts']);                                          # Change contour label settings
-  cbar = add_colorbar( cf, ax, color_maps.wind_250['lvls'], **kwargs );         # Add a color bar
+  cbar = add_colorbar( cf, color_maps.wind_250['lvls'], **kwargs );         # Add a color bar
 
   txt = baseLabel( model, initTime, fcstTime );                                 # Get base string for label
   txt.append('250-hPa HEIGHTS, WINDS, ISOTACHS (KT)');                          # Update label

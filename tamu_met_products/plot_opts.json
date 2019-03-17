@@ -1,5 +1,5 @@
 {
-  "colorbar_Opts" : {
+  "colorbar" : {
       "drawedges"   : true,
       "orientation" : "horizontal"
   },
@@ -24,7 +24,7 @@
   },
   "subplot_adjust" : {
       "left"   : 0.005, 
-      "bottom" : 0.075, 
+      "bottom" : 0.060, 
       "right"  : 0.995, 
       "top"    : 0.995, 
       "wspace" : 0.050, 
