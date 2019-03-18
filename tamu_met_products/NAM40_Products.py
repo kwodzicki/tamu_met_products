@@ -1,5 +1,5 @@
 import logging;
-import os, json;
+import os, uuid, json;
 from awips.dataaccess import DataAccessLayer as DAL;
 import matplotlib.pyplot as plt;
 import cartopy.crs as ccrs;
@@ -64,8 +64,14 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 6 ):
     if not os.path.isdir(val):                                                  # If the directory does NOT exist
       os.makedirs( val );                                                       # Create it
 
-  for i in range(1):#range( len(times) ):
+  fig = plt.figure( **opts['figure_opts'] )
+  plt.subplots_adjust( **opts['subplot_adjust'] );                              # Set up subplot margins
+
+  for i in range( len(times) ):
     if (fcstTimes[i].hour % interval) != 0: continue;                           # If the forecast hour does not fall on the requested interval, skip it
+    period = times[i].getValidPeriod().duration() // 3600;                      # Get the period over which the forecast time is valid
+    if (period != 1) and ((period % interval) != 0): continue;                  # If the period is NOT an hour AND NOT the interval, continue
+
     fcstTime = fcstTimes[i].strftime(timeFMT)
     
     base_file  = '{}_{}.png'.format( NAM40['model_name'], fcstTime )
@@ -83,90 +89,75 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 6 ):
       );                                                                        # Transform the data; saves some time
 
     # 4-panel plot
+    fig.clf();
     if os.path.isfile( files['4-panel'] ):
       log.info( '4-Panel file exists, skipping: {}'.format(fcstTimes[i]) )
     else:
       log.info( 'Creating 4-panel image for: {}'.format(fcstTimes[i]) )
-      fig  = forecast_4_panel( data, initTime, fcstTimes[i], map_projection = mapProj );
-      fig.savefig( files['4-panel'], dpi = dpi )
+      ax = [ fig.add_subplot(221, projection = mapProj, label = uuid.uuid4()),
+             fig.add_subplot(222, projection = mapProj, label = uuid.uuid4()),
+             fig.add_subplot(223, projection = mapProj, label = uuid.uuid4()),
+             fig.add_subplot(224, projection = mapProj, label = uuid.uuid4())]
 
+      extent, scale = getMapExtentScale( ax[0], data['lon'], data['lat'] )
+      plot_500hPa_vort_hght_barbs(    ax[0], data, extent = extent );
+      plot_250hPa_isotach_hght_barbs( ax[1], data, extent = extent );
+      plot_850hPa_temp_hght_barbs(    ax[2], data, extent = extent );
+      plot_srfc_rh_mslp_thick(        ax[3], data, extent = extent );
+
+      fig.savefig( files['4-panel'], dpi = dpi )
 
     extent = None
     # Surface plot
+    fig.clf();
     if os.path.isfile( files['surface'] ):
       log.info( 'Surface file exists, skipping: {}'.format(fcstTimes[i]) )
     else:
       log.info( 'Creating surface image for: {}'.format(fcstTimes[i]) )
-      fig, ax = initFigure(1, 1)
+      ax = fig.add_subplot(111, projection = mapProj, label = uuid.uuid4())
       if extent is None:
         extent, scale = getMapExtentScale( ax, data['lon'], data['lat'] );
 
-      plot_srfc_rh_mslp_thick(
-        ax, data['lon'], data['lat'],
-        data['rh 700.0MB'], data['mslp 0.0MSL'], 
-        data['geo_hght 1000.0MB'], data['geo_hght 500.0MB'],
-        data['model'], initTime, fcstTimes[i],
-        extent = extent
-      )
+      plot_srfc_rh_mslp_thick( ax, data, extent = extent )
       fig.savefig( files['surface'], dpi = dpi )
 
-
     # 850-hPa Plot
+    fig.clf();
     if os.path.isfile( files['850-hPa'] ):
       log.info( '850-hPa file exists, skipping: {}'.format(fcstTimes[i]) )
     else:
       log.info( 'Creating 850-hPa image for: {}'.format(fcstTimes[i]) )
-      fig, ax = initFigure(1, 1)
+      ax = fig.add_subplot(111, projection = mapProj, label = uuid.uuid4())
       if extent is None:
         extent, scale = getMapExtentScale( ax, data['lon'], data['lat'] );
 
-      plot_850hPa_temp_hght_barbs(
-        ax, data['lon'], data['lat'],
-        data['temp 850.0MB'], data['geo_hght 850.0MB'], 
-        data['model'], initTime, fcstTimes[i], 
-        u      = data['u_wind 850.0MB'], 
-        v      = data['v_wind 850.0MB'],
-        extent = extent
-      )
+      plot_850hPa_temp_hght_barbs( ax, data, extent = extent )
       fig.savefig( files['850-hPa'], dpi = dpi )
+      
 
     # 500-hPa Plot
+    fig.clf();
     if os.path.isfile( files['500-hPa'] ):
       log.info( '500-hPa file exists, skipping: {}'.format(fcstTimes[i]) )
     else:
       log.info( 'Creating 500-hPa image for: {}'.format(fcstTimes[i]) )
-      fig, ax = initFigure(1, 1)
+      ax = fig.add_subplot(111, projection = mapProj, label = uuid.uuid4())
       if extent is None:
         extent, scale = getMapExtentScale( ax, data['lon'], data['lat'] );
 
-      plot_500hPa_vort_hght_barbs( 
-        ax, data['lon'], data['lat'],
-        data['abs_vor 500.0MB'], data['geo_hght 500.0MB'], 
-        data['model'], initTime, fcstTimes[i], 
-        u      = data['u_wind 500.0MB'], 
-        v      = data['v_wind 500.0MB'] ,
-        extent = extent
-      )
+      plot_500hPa_vort_hght_barbs( ax, data, extent = extent )
       fig.savefig( files['500-hPa'], dpi = dpi )
+      
 
     # 250-hPa Plot
+    fig.clf();
     if os.path.isfile( files['250-hPa'] ):
       log.info( '250-hPa file exists, skipping: {}'.format(fcstTimes[i]) )
     else:
       log.info( 'Creating 250-hPa image for: {}'.format(fcstTimes[i]) )
-      fig, ax = initFigure(1, 1)
+      ax = fig.add_subplot(111, projection = mapProj, label = uuid.uuid4())
       if extent is None:
         extent, scale = getMapExtentScale( ax, data['lon'], data['lat'] );
 
-      plot_250hPa_isotach_hght_barbs(
-        ax, data['lon'], data['lat'],
-        data['u_wind 250.0MB'],  data['v_wind 250.0MB'], data['geo_hght 250.0MB'],
-        data['model'], initTime, fcstTimes[i],
-        extent = extent
-      )
+      plot_250hPa_isotach_hght_barbs( ax, data, extent = extent )
       fig.savefig( files['250-hPa'], dpi = dpi )
-
-
-  
-  
-

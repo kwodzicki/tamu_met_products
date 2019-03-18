@@ -7,7 +7,27 @@ from awips.dataaccess import DataAccessLayer as DAL;
 
 iso = '%Y-%m-%d %H:%M:%S';  # ISO format for date
 
+################################################################################
+def get_init_fcst_times( time ):
+  '''
+  Name:
+    get_init_fcst_times
+  Purpose:
+    A python function to extract forecast initialization and forecast
+    time from an awips time object
+  Inputs:
+    time : Time to convert
+  Ouputs:
+    datetime objects for forecast initialization time and
+    forecast time
+  Keywords:
+    None.
+  '''
+  initTime = datetime.strptime( str(time), iso )
+  fcstTime = initTime + timedelta( seconds = time.getFcstTime() )
+  return initTime, fcstTime
 
+################################################################################
 def awips_fcst_times( request ):
   '''
   Name:
@@ -23,12 +43,12 @@ def awips_fcst_times( request ):
   '''
   cycles    = DAL.getAvailableTimes(request, True);                             # Get forecast cycles
   times     = DAL.getAvailableTimes(request)                                    # Get forecast times
-  times     = DAL.getForecastRun(cycles[-1], times);                            # Get forecast times in latest cycle
+  times     = DAL.getForecastRun(cycles[-2], times);                            # Get forecast times in latest cycle
   initTime  = datetime.strptime( str(times[0]), iso );                          # Reference time; i.e., initialization time
   fcstTimes = [initTime + timedelta( seconds=t.getFcstTime() ) for t in times]; # Get all forecast times
   return initTime, fcstTimes, times                                             # Return forecast runs for latest cycle
 
-
+################################################################################
 def awips_model_base( request, time, model_vars, mdl2stnd ):
   '''
   Name:
@@ -47,9 +67,10 @@ def awips_model_base( request, time, model_vars, mdl2stnd ):
     EDEX   : URL for EDEX host to use
   '''
   log = logging.getLogger(__name__);                                            # Set up function for logger
-
-  data = {'model' : request.getLocationNames()[0],
-          'time'  : time};                                                                    # Initialize empty dictionary
+  initTime, fcstTime = get_init_fcst_times( time )
+  data = {'model'    : request.getLocationNames()[0],
+          'initTime' : initTime,
+          'fcstTime' : fcstTime};                                               # Initialize empty dictionary
 
   log.info('Attempting to download {} data'.format( data['model'] ) )
 

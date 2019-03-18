@@ -14,7 +14,7 @@ with open( os.path.join(dir, 'plot_opts.json'), 'r' ) as fid:
   opts = json.load(fid);
 
 ################################################################################
-def plot_srfc_rh_mslp_thick( ax, xx, yy, rh, mslp, hght_1000, hght_500, model, initTime, fcstTime, u=None, v=None, **kwargs ):
+def plot_srfc_rh_mslp_thick( ax, data, **kwargs ):
   '''
   Name:
     plot_srfc_rh_mslp_thick
@@ -22,16 +22,8 @@ def plot_srfc_rh_mslp_thick( ax, xx, yy, rh, mslp, hght_1000, hght_500, model, i
     A python function to plot a surface plot like the one in the
     lower right of the HDWX 4-panel plot
   Inputs:
-    ax        : A GeoAxes object for axes to plot data on
-    xx        : x-values for plot
-    yy        : y-values for plot
-    rh        : Reyyive humidity at 700 hPa
-    mslp      : Mean sea-level pressure
-    hght_1000 : Height of the 1000 hPa 
-    hght_500  : Height of the 500 hPa 
-    model     : Name of the model being plotted
-    initTime  : Initialization time of the model run
-    fcstTime  : Forecast time of the model run
+    ax       : A GeoAxes object for axes to plot data on
+    data     : Dictionary with all data plot
   Keywords:
     u : u-wind components for wind barbs
     v : v-wind components for wind barbs
@@ -41,34 +33,55 @@ def plot_srfc_rh_mslp_thick( ax, xx, yy, rh, mslp, hght_1000, hght_500, model, i
   log = logging.getLogger(__name__);
   log.info('Creating surface hPa plot')
 
+  if 'lon' not in data:
+    log.error('No longitude values in data')
+    return None, None, None;
+  elif 'lat' not in data:
+    log.error('No latitude values in data')
+    return None, None, None;
+
   transform = kwargs.pop( 'transform', None );                                  # Get transformation for x- and y-values
   if transform is not None:                                                     # If transform is not None, then we must transform the points for plotting
-    xx, yy = xy_transform( ax.projection, transform, xx, yy )
-
+    xx, yy = xy_transform( ax.projection, transform, data['lon'], data['lat'] )
+  else:
+    xx, yy = data['lon'], data['lat']
   if 'extent' not in kwargs:
     kwargs['extent'], scale = getMapExtentScale(ax, xx, yy)
   ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
 
-  thick = hght_500 - hght_1000;                                                 # Compute thickness
-  log.info('Plotting thickness')
-  cf = ax.contourf(xx, yy, rh, 
+  if ('rh 700.0MB' not in data):
+    log.error('No relative humidity data')
+    cf = cbar = None;
+  else:                                                                         # Else, required variables in dictionary
+    log.debug('Plotting relative humidity')
+    cf = ax.contourf(xx, yy, data['rh 700.0MB'], 
                       cmap   = color_maps.surface['cmap'], 
                       norm   = color_maps.surface['norm'],
                       levels = color_maps.surface['lvls'],
                       **opts['contourf_Opts'])
-  cbar = add_colorbar( cf, color_maps.surface['lvls'], **kwargs );          # Add colorbar
+    cbar = add_colorbar( cf, color_maps.surface['lvls'], **kwargs );            # Add colorbar
 
-  c = ax.contour(xx, yy, thick, **contour_levels.thickness);                    # Draw red/blue dashed lines
-  ax.clabel(c, **opts['clabel_Opts']);                                          # Update labels
+  if ('geo_hght 1000.0MB' not in data) or ('geo_hght 500.0MB' not in data):     # If the required geopotential heights are NOT in dictionary
+    log.error('No geopotential height info at 1000 hPa or 500 hPa')
+    c = None;
+  else:                                                                         # Else, required variables in dictionary
+    thick  = data['geo_hght 500.0MB'].to('meter').m;
+    thick -= data['geo_hght 1000.0MB'].to('meter').m;                           # Compute thickness
+    c      = ax.contour(xx, yy, thick, **contour_levels.thickness);             # Draw red/blue dashed lines
+    ax.clabel(c, **opts['clabel_Opts']);                                        # Update labels
 
-  log.debug('Plotting geopotential height')
-  c = ax.contour(xx, yy, mslp.to('hPa'), 
+  if ('mslp 0.0MSL' not in data):                                               # If mean sea level pressure data NOT in dictionary
+    log.error('No mean sea level pressure data')
+    c = None
+  else:                                                                         # Else, required variables in dictionary
+    log.debug('Plotting mean sea level pressure')
+    c = ax.contour(xx, yy, data['mslp 0.0MSL'].to('hPa').m, 
          levels = contour_levels.mslp, 
          **opts['contour_Opts']
-      )
-  ax.clabel(c, **opts['clabel_Opts'])
+        )
+    ax.clabel(c, **opts['clabel_Opts'])
 
-  txt = baseLabel( model, initTime, fcstTime );                                 # Get base string for label
+  txt = baseLabel( data['model'], data['initTime'], data['fcstTime'] );         # Get base string for label
   txt.append('700-hPa RH, MSLP, 1000--500-hPa THICK');                          # Update label
   t = ax.text(0.5, 0, '\n'.join( txt ),
                  verticalalignment   = 'top', 
@@ -78,7 +91,7 @@ def plot_srfc_rh_mslp_thick( ax, xx, yy, rh, mslp, hght_1000, hght_500, model, i
   return cf, c, cbar
 
 ################################################################################
-def plot_850hPa_temp_hght_barbs( ax, xx, yy, temp, hght, model, initTime, fcstTime, u=None, v=None, **kwargs ):
+def plot_850hPa_temp_hght_barbs( ax, data, **kwargs ):
   '''
   Name:
     plot_850hPa_temp_hght_barbs
@@ -87,13 +100,7 @@ def plot_850hPa_temp_hght_barbs( ax, xx, yy, temp, hght, model, initTime, fcstTi
     lower left of the HDWX 4-panel plot
   Inputs:
     ax       : A GeoAxes object for axes to plot data on
-    xx       : x-values for plot
-    yy       : y-values for plot
-    temp     : temperature at 850 hPa to plot
-    hght     : Geopotential heights at 850 hPa to plot
-    model    : Name of the model being plotted
-    initTime : Initialization time of the model run
-    fcstTime : Forecast time of the model run
+    data     : Dictionary with all data plot
   Keywords:
     u : u-wind components for wind barbs
     v : v-wind components for wind barbs
@@ -104,36 +111,55 @@ def plot_850hPa_temp_hght_barbs( ax, xx, yy, temp, hght, model, initTime, fcstTi
   log = logging.getLogger(__name__)
   log.info('Creating 850 hPa plot')
 
+  if 'lon' not in data:
+    log.error('No longitude values in data')
+    return None, None, None;
+  elif 'lat' not in data:
+    log.error('No latitude values in data')
+    return None, None, None;
+
   transform = kwargs.pop( 'transform', None );                                  # Get transformation for x- and y-values
   if transform is not None:                                                     # If transform is not None, then we must transform the points for plotting
-    xx, yy = xy_transform( ax.projection, transform, xx, yy )
+    xx, yy = xy_transform( ax.projection, transform, data['lon'], data['lat'] )
+  else:
+    xx, yy = data['lon'], data['lat']
 
   if 'extent' not in kwargs:
     kwargs['extent'], scale = getMapExtentScale(ax, xx, yy)
   ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
 
-  log.info('Plotting surface temperature')
-
-  cf = ax.contourf(xx, yy, temp.to('degC'), 
+  if ('temp 850.0MB' not in data):
+    log.error('No temperature data!')
+    cf = cbar = c1 = None;
+  else:
+    log.debug('Plotting surface temperature')
+    temp = data['temp 850.0MB'].to('degC')
+    cf   = ax.contourf(xx, yy, temp.m, 
                       cmap   = color_maps.temp_850['cmap'], 
                       norm   = color_maps.temp_850['norm'],
                       levels = color_maps.temp_850['lvls'],
                       **opts['contourf_Opts'])
-  cbar = add_colorbar( cf, color_maps.temp_850['lvls'], **kwargs );             # Add colorbar
-
-  c1 = ax.contour(xx, yy, temp.to('degC'), 
-         levels = 0, colors = (0,0,1), linewidths = 2);                         # Contour for 0 degree C line
-
-  plot_barbs( ax, xx, yy, u, v );                                               # Plot wind barbs
+    cbar = add_colorbar( cf, color_maps.temp_850['lvls'], **kwargs );           # Add colorbar
+    c1   = ax.contour(xx, yy, temp.m, 
+           levels = 0, colors = (0,0,1), linewidths = 2);                       # Contour for 0 degree C line
   
-  log.debug('Plotting geopotential height')
-  c2 = ax.contour(xx, yy, hght, 
+  if ('geo_hght 850.0MB' not in data):
+    log.error('No geopotential height data!')
+    c2 = None
+  else:
+    log.debug('Plotting geopotential height')
+    c2 = ax.contour(xx, yy, data['geo_hght 850.0MB'].to('meter').m, 
           levels = contour_levels.heights['850'],
           **opts['contour_Opts']
-      );                                                                        # Contour the geopotential height
-  ax.clabel(c2, **opts['clabel_Opts']);                                         # Change contour label settings
+        );                                                                      # Contour the geopotential height
+    ax.clabel(c2, **opts['clabel_Opts']);                                       # Change contour label settings
 
-  txt = baseLabel( model, initTime, fcstTime );                                 # Get base string for label
+  if ('u_wind 850.0MB' not in data) or ('v_wind 850.0MB' not in data):
+    log.error('Missing wind component(s)!')
+  else:
+    plot_barbs( ax, xx, yy, data['u_wind 850.0MB'], data['v_wind 850.0MB'] );   # Plot wind barbs
+
+  txt = baseLabel( data['model'], data['initTime'], data['fcstTime'] );         # Get base string for label
   txt.append('850-hPa HEIGHTS, WINDS, TEMP (C)');                               # Update label
   t = ax.text(0.5, 0, '\n'.join( txt ),
                  verticalalignment   = 'top', 
@@ -143,7 +169,7 @@ def plot_850hPa_temp_hght_barbs( ax, xx, yy, temp, hght, model, initTime, fcstTi
   return cf, (c1, c2), cbar
 
 ################################################################################
-def plot_500hPa_vort_hght_barbs( ax, xx, yy, vort, hght, model, initTime, fcstTime, u=None, v=None, **kwargs ):
+def plot_500hPa_vort_hght_barbs( ax, data, **kwargs ):
   '''
   Name:
     plot_500hPa_vort_hght_barbs
@@ -152,13 +178,7 @@ def plot_500hPa_vort_hght_barbs( ax, xx, yy, vort, hght, model, initTime, fcstTi
     upper left of the HDWX 4-panel plot
   Inputs:
     ax       : A GeoAxes object for axes to plot data on
-    xx       : x-values for plot
-    yy       : y-values for plot
-    vort     : Vorticity at 500 hPa to plot
-    hght     : Geopotential heights at 500 hPa to plot
-    model    : Name of the model being plotted
-    initTime : Initialization time of the model run
-    fcstTime : Forecast time of the model run
+    data     : Dictionary with all data plot
   Keywords:
     u : u-wind components for wind barbs
     v : v-wind components for wind barbs
@@ -170,33 +190,52 @@ def plot_500hPa_vort_hght_barbs( ax, xx, yy, vort, hght, model, initTime, fcstTi
   log = logging.getLogger(__name__)
   log.info('Creating 500 hPa plot')
 
+  if 'lon' not in data:
+    log.error('No longitude values in data')
+    return None, None, None;
+  elif 'lat' not in data:
+    log.error('No latitude values in data')
+    return None, None, None;
+  
   transform = kwargs.pop( 'transform', None );                                  # Get transformation for x- and y-values
   if transform is not None:                                                     # If transform is not None, then we must transform the points for plotting
-    xx, yy = xy_transform( ax.projection, transform, xx, yy )
+    xx, yy = xy_transform( ax.projection, transform, data['lon'], data['lat'] )
+  else:
+    xx, yy = data['lon'], data['lat']
 
   if 'extent' not in kwargs:
     kwargs['extent'], scale = getMapExtentScale(ax, xx, yy)
   ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
 
-  log.debug('Plotting vorticity') 
-  if vort.max().m < 1.0: vort *= 1.0e5;                                         # If vorticity values too small, scale them
-  cf = ax.contourf(xx, yy, vort, 
+  if 'abs_vor 500.0MB' not in data:
+    log.error('No voriticity data!');
+    cf = cbar = None;
+  else:
+    log.debug('Plotting vorticity') 
+    cf = ax.contourf(xx, yy, data['abs_vor 500.0MB'].m * 1.0e5, 
                          cmap   = color_maps.vort_500['cmap'], 
                          norm   = color_maps.vort_500['norm'],
                          levels = color_maps.vort_500['lvls'],
                          **opts['contourf_Opts'])
-  cbar = add_colorbar( cf, color_maps.vort_500['lvls'], **kwargs );             # Add a color bar
-
-  plot_barbs( ax, xx, yy, u, v );                                               # Plot wind barbs
-    
-  log.debug('Plotting geopotential height')
-  c = ax.contour(xx, yy, hght, 
+    cbar = add_colorbar( cf, color_maps.vort_500['lvls'], **kwargs );             # Add a color bar
+ 
+  if 'geo_hght 500.0MB' not in data:
+    log.error('No geopotential height data')
+    c = None;
+  else:  
+    log.debug('Plotting geopotential height')
+    c = ax.contour(xx, yy, data['geo_hght 500.0MB'].to('meter').m, 
          levels = contour_levels.heights['500'],
          **opts['contour_Opts']
-      );                                                                        # Contour the geopotential height
-  ax.clabel(c, **opts['clabel_Opts']);                                          # Change contour label settings
+        );                                                                        # Contour the geopotential height
+    ax.clabel(c, **opts['clabel_Opts']);                                          # Change contour label settings
+ 
+  if ('u_wind 500.0MB' not in data) or ('v_wind 500.0MB' not in data):
+    log.error('Missing wind component(s)!')
+  else:
+    plot_barbs( ax, xx, yy, data['u_wind 500.0MB'], data['v_wind 500.0MB'] );   # Plot wind barbs
   
-  txt = baseLabel( model, initTime, fcstTime );                                 # Get base string for label
+  txt = baseLabel( data['model'], data['initTime'], data['fcstTime'] );                         # Get base string for label
   txt.append('500-hPa HEIGHTS, WINDS, ABS VORT');                               # Update Label 
   t = ax.text(0.5, 0, '\n'.join( txt ),
                  verticalalignment   = 'top', 
@@ -206,7 +245,7 @@ def plot_500hPa_vort_hght_barbs( ax, xx, yy, vort, hght, model, initTime, fcstTi
   return cf, c, cbar;
 
 ################################################################################
-def plot_250hPa_isotach_hght_barbs( ax, xx, yy, u, v, hght, model, initTime, fcstTime, **kwargs ):
+def plot_250hPa_isotach_hght_barbs( ax, data, **kwargs ):
   '''
   Name:
     plot_250hPa_isotach_hght_barbs
@@ -215,14 +254,7 @@ def plot_250hPa_isotach_hght_barbs( ax, xx, yy, u, v, hght, model, initTime, fcs
     upper right of the HDWX 4-panel plot
   Inputs:
     ax       : A GeoAxes object for axes to plot data on
-    xx       : x-values for plot
-    yy       : y-values for plot
-    u        : U-wind component
-    v        : V-wind component
-    hght     : Geopotential heights at 250 hPa to plot
-    model    : Name of the model being plotted
-    initTime : Initialization time of the model run
-    fcstTime : Forecast time of the model run
+    data     : Dictionary with all data plot
   Keywords:
     All keywords accecpted by plotting methods. Useful keywords below:
       ax    : A GeoAxes object for axes to plot data on
@@ -232,33 +264,51 @@ def plot_250hPa_isotach_hght_barbs( ax, xx, yy, u, v, hght, model, initTime, fcs
   log = logging.getLogger(__name__)
   log.info('Creating 250 hPa plot')
 
+  if 'lon' not in data:
+    log.error('No longitude values in data')
+    return None, None, None;
+  elif 'lat' not in data:
+    log.error('No latitude values in data')
+    return None, None, None;
+
   transform = kwargs.pop( 'transform', None );                                  # Get transformation for x- and y-values
   if transform is not None:                                                     # If transform is not None, then we must transform the points for plotting
-    xx, yy = xy_transform( ax.projection, transform, xx, yy )
+    xx, yy = xy_transform( ax.projection, transform, data['lon'], data['lat'] )
+  else:
+    xx, yy = data['lon'], data['lat']
 
   if 'extent' not in kwargs:
     kwargs['extent'], scale = getMapExtentScale(ax, xx, yy)
   ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
 
-  log.debug('Plotting winds')
-  isotach = wind_speed( u, v ).to('kts');                                       # Compute windspeed and convert to knots
-  cf = ax.contourf(xx, yy, isotach, 
+  if ('u_wind 250.0MB' not in data) or ('v_wind 250.0MB' not in data):
+    log.error('Missing u- or v-wind component')
+    cf = cb = None;
+  else:
+    log.debug('Plotting isotachs')
+    isotach = wind_speed( data['u_wind 250.0MB'], data['v_wind 250.0MB'] );     # Compute windspeed and convert to knots
+    cf      = ax.contourf(xx, yy, isotach.to('kts').m, 
                       cmap   = color_maps.wind_250['cmap'], 
                       norm   = color_maps.wind_250['norm'],
                       levels = color_maps.wind_250['lvls'],
                       **opts['contourf_Opts'])
-  cbar = add_colorbar( cf, color_maps.wind_250['lvls'], **kwargs );             # Add a color bar
-
-  plot_barbs( ax, xx, yy, u, v );                                               # Plot wind barbs
+    cbar    = add_colorbar( cf, color_maps.wind_250['lvls'], **kwargs );        # Add a color bar
  
-  log.debug('Plotting geopotential height')
-  c = ax.contour(xx, yy, hght, 
-         levels = contour_levels.heights['250'],
-         **opts['contour_Opts']
-      );                                                                        # Contour the geopotential height
-  ax.clabel(c, **opts['clabel_Opts']);                                          # Change contour label settings
+  if ('geo_hght 250.0MB' not in data):
+    log.error('No geopotential height data')
+    c = None;
+  else:
+    log.debug('Plotting geopotential height')
+    c = ax.contour(xx, yy, data['geo_hght 250.0MB'].to('meter').m, 
+           levels = contour_levels.heights['250'],
+           **opts['contour_Opts']
+       );                                                                       # Contour the geopotential height
+    ax.clabel(c, **opts['clabel_Opts']);                                        # Change contour label settings
 
-  txt = baseLabel( model, initTime, fcstTime );                                 # Get base string for label
+  if cf is not None:                                                            # If cf is not None, that means the u- and v-winds exist
+    plot_barbs( ax, xx, yy, data['u_wind 250.0MB'], data['v_wind 250.0MB'] );   # Plot wind barbs
+
+  txt = baseLabel( data['model'], data['initTime'], data['fcstTime'] );         # Get base string for label
   txt.append('250-hPa HEIGHTS, WINDS, ISOTACHS (KT)');                          # Update label
   t = ax.text(0.5, 0, '\n'.join( txt ),
                  verticalalignment   = 'top', 

@@ -1,5 +1,5 @@
 import logging
-import os, json;
+import os, uuid, json;
 import matplotlib.pyplot as plt;
 import cartopy.crs as ccrs;
 import cartopy.feature as cfeature
@@ -169,7 +169,8 @@ def add_colorbar( mappable, ticks, **kwargs ):
 
   ax_x0, ax_y0, ax_w, ax_h = ax._position.bounds;                               # Get size of axes relative to figure size
   ax_w  /=  4.0;                                                                # Divide axis width by 4
-  cb_ax  = ax.figure.add_axes( (ax_x0, ax_y0-2.0*cbHeight, ax_w, cbHeight) );   # Add axis for the color bar
+  rect   = (ax_x0, ax_y0-2.0*cbHeight, ax_w, cbHeight)
+  cb_ax  = ax.figure.add_axes( rect, label = uuid.uuid4() );                    # Add axis for the color bar
   cbar   = plt.colorbar(mappable, cax=cb_ax, ticks=ticks, **opts['colorbar']);  # Generate the colorbar
   cbar.ax.xaxis.set_ticks_position('top');                                      # Place labels on top of color bar
   x_ticks = cbar.ax.get_xticklabels();                                          # Get x-axis tick labels of color bar
