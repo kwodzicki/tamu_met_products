@@ -3,11 +3,12 @@ from matplotlib.colors import ListedColormap, BoundaryNorm
 from . import contour_levels;
 
 def buildCMAP( inVar ):
-  inVar['rgb']  = np.array( inVar['rgb'] ).transpose() / 255.0;
-  inVar['cmap'] = ListedColormap( inVar['rgb'][1:-1,:] )
-  inVar['cmap'].set_under( inVar['rgb'][ 0,:] )
-  inVar['cmap'].set_over(  inVar['rgb'][-1,:] )
-  inVar['norm'] = BoundaryNorm( inVar['lvls'], inVar['cmap'].N );
+  if isinstance( inVar['rgb'], list):                                           # If rgb tag is a list instance
+    inVar['rgb']  = np.array( inVar['rgb'] ).transpose() / 255.0;               # Convert to numpy array, transpose, and divide by 255
+  inVar['cmap'] = ListedColormap( inVar['rgb'][1:-1,:] );                       # Initialize color map; first and last points in the rgb values are under/over colors
+  inVar['cmap'].set_under( inVar['rgb'][ 0,:] );                                # Set colorbar under color
+  inVar['cmap'].set_over(  inVar['rgb'][-1,:] );                                # Set colorbar over color
+  inVar['norm'] = BoundaryNorm( inVar['lvls'], inVar['cmap'].N );               # Set colorbar labels?
   return inVar
 
 # 500 hPa vorticity
@@ -38,6 +39,16 @@ temp_850 = {
 }
 temp_850 = buildCMAP( temp_850 )
 
+# 850 hPa temps
+temp_2m = {
+  'rgb'  : [ [  0,  11,  30,  41,  31, 132, 255, 253, 253, 252, 137, 137, 144, 137],
+             [  9,  36, 179, 237, 203, 253, 253, 164, 127,  13,   3, 104,  57,  17],
+             [255, 251, 235, 237,  35,  49,  56,  88,  35,  27,   9, 205, 234, 137] ],
+  'lvls' : contour_levels.temperature['2m']
+}
+temp_2m = buildCMAP( temp_2m )
+
+
 # Surface plot
 surface = {
   'rgb'  : [ [255, 131,  41,  31,  17],
@@ -46,3 +57,9 @@ surface = {
   'lvls' : contour_levels.humidity['700']
 }
 surface = buildCMAP( surface )
+
+theta_e_1000 = {
+  'rgb'  : temp_850['rgb'][:-1,:],
+  'lvls' : contour_levels.theta_e['1000']
+}
+theta_e_1000 = buildCMAP( theta_e_1000 )

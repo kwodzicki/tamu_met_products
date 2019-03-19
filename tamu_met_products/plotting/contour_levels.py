@@ -20,6 +20,7 @@ humidity = {
 
 # Temperatures at 850 hPa
 temperature = {
+  '2m'  : np.arange(  20,   81,   5),
   '850' : np.arange( -20,   31,   5)
 }
 
@@ -31,6 +32,10 @@ vorticity = {
 # Winds
 winds = {
   '250' : np.arange(  70,  171,  20)
+}
+
+theta_e = {
+  '1000' : np.arange( 280, 371, 10 ) 
 }
 
 #Heights 

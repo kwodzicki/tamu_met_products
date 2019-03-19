@@ -14,7 +14,7 @@ with open( os.path.join(dir, 'plot_opts.json'), 'r' ) as fid:
   opts = json.load(fid);
 
 ################################################################################
-def plot_srfc_rh_mslp_thick( ax, data, **kwargs ):
+def plot_rh_mslp_thick( ax, data, **kwargs ):
   '''
   Name:
     plot_srfc_rh_mslp_thick
@@ -89,6 +89,129 @@ def plot_srfc_rh_mslp_thick( ax, data, **kwargs ):
                  transform           = ax.transAxes);                           # Add label to axes
 
   return cf, c, cbar
+
+################################################################################
+def plot_srfc_temp_barbs( ax, data, **kwargs ):
+  '''
+  Name:
+    plot_srfc_temp_barbs
+  Purpose:
+    A python function to plot 2 meter temperature and 10 meter wind barbs
+  Inputs:
+    ax       : A GeoAxes object for axes to plot data on
+    data     : Dictionary with all data plot
+  Keywords:
+    u : u-wind components for wind barbs
+    v : v-wind components for wind barbs
+  Outputs:
+    Returns the filled contour, contour, and colorbar objects
+  '''
+  log = logging.getLogger(__name__);
+  log.info('Creating surface hPa plot')
+
+  if 'lon' not in data:
+    log.error('No longitude values in data')
+    return None, None, None;
+  elif 'lat' not in data:
+    log.error('No latitude values in data')
+    return None, None, None;
+
+  transform = kwargs.pop( 'transform', None );                                  # Get transformation for x- and y-values
+  if transform is not None:                                                     # If transform is not None, then we must transform the points for plotting
+    xx, yy = xy_transform( ax.projection, transform, data['lon'], data['lat'] )
+  else:
+    xx, yy = data['lon'], data['lat']
+  if 'extent' not in kwargs:
+    kwargs['extent'], scale = getMapExtentScale(ax, xx, yy)
+  ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
+
+  if ('temp 2.0FHAG' not in data):
+    log.error('No temperature data')
+    cf = cbar = None;
+  else:                                                                         # Else, required variables in dictionary
+    log.debug('Plotting temperature data')
+    cf = ax.contourf(xx, yy, data['temp 2.0FHAG'].to('degF').m, 
+                      cmap   = color_maps.temp_2m['cmap'], 
+                      norm   = color_maps.temp_2m['norm'],
+                      levels = color_maps.temp_2m['lvls'],
+                      **opts['contourf_Opts'])
+    cbar = add_colorbar( cf, color_maps.temp_2m['lvls'], **kwargs );            # Add colorbar
+
+  if ('u_wind 10.0FHAG' not in data) or ('v_wind 10.0FHAG' not in data):
+    log.error('Missing wind component(s)!')
+  else:
+    plot_barbs( ax, xx, yy, data['u_wind 10.0FHAG'], data['v_wind 10.0FHAG'] ); # Plot wind barbs
+
+  txt = baseLabel( data['model'], data['initTime'], data['fcstTime'] );         # Get base string for label
+  txt.append('2-M TEMP (F) AND 10-M WINDS');                                    # Update label
+  t = ax.text(0.5, 0, '\n'.join( txt ),
+                 verticalalignment   = 'top', 
+                 horizontalalignment = 'center',
+                 transform           = ax.transAxes);                           # Add label to axes
+
+  return cf, None, cbar
+
+################################################################################
+def plot_1000hPa_theta_e_barbs( ax, data, **kwargs ):
+  '''
+  Name:
+    plot_1000hPa_theta_e_barbs
+  Purpose:
+    A python function to plot a 1000 hPa equivalent potential temperature and
+    winds
+  Inputs:
+    ax       : A GeoAxes object for axes to plot data on
+    data     : Dictionary with all data plot
+  Keywords:
+    u : u-wind components for wind barbs
+    v : v-wind components for wind barbs
+  Outputs:
+    Returns the filled contour, contour, and colorbar objects
+  '''
+  log = logging.getLogger(__name__);
+  log.info('Creating surface hPa plot')
+
+  if 'lon' not in data:
+    log.error('No longitude values in data')
+    return None, None, None;
+  elif 'lat' not in data:
+    log.error('No latitude values in data')
+    return None, None, None;
+
+  transform = kwargs.pop( 'transform', None );                                  # Get transformation for x- and y-values
+  if transform is not None:                                                     # If transform is not None, then we must transform the points for plotting
+    xx, yy = xy_transform( ax.projection, transform, data['lon'], data['lat'] )
+  else:
+    xx, yy = data['lon'], data['lat']
+  if 'extent' not in kwargs:
+    kwargs['extent'], scale = getMapExtentScale(ax, xx, yy)
+  ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
+
+  if ('theta_e 1000.0MB' not in data):
+    log.error('No equivalent potential temperature data')
+    cf = cbar = None;
+  else:                                                                         # Else, required variables in dictionary
+    log.debug('Plotting relative humidity')
+    cf = ax.contourf(xx, yy, data['theta_e 1000.0MB'].to('K').m, 
+                      cmap   = color_maps.theta_e_1000['cmap'], 
+                      norm   = color_maps.theta_e_1000['norm'],
+                      levels = color_maps.theta_e_1000['lvls'],
+                      **opts['contourf_Opts'])
+    cbar = add_colorbar( cf, color_maps.theta_e_1000['lvls'], **kwargs );       # Add colorbar
+
+  if ('u_wind 1000.0MB' not in data) or ('v_wind 1000.0MB' not in data):
+    log.error('Missing wind component(s)!')
+  else:
+    plot_barbs( ax, xx, yy, data['u_wind 1000.0MB'], data['v_wind 1000.0MB'] ); # Plot wind barbs
+
+  txt = baseLabel( data['model'], data['initTime'], data['fcstTime'] );         # Get base string for label
+  txt.append('1000-hPa EQUIVALENT POTENTIAL TEMPERATURE AND WINDS');            # Update label
+  t = ax.text(0.5, 0, '\n'.join( txt ),
+                 verticalalignment   = 'top', 
+                 horizontalalignment = 'center',
+                 transform           = ax.transAxes);                           # Add label to axes
+
+  return cf, None, cbar
 
 ################################################################################
 def plot_850hPa_temp_hght_barbs( ax, data, **kwargs ):

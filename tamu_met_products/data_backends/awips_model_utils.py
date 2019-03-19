@@ -2,7 +2,7 @@ import logging;
 import numpy as np;
 from datetime import datetime, timedelta
 from metpy.units import units
-from metpy.calc import absolute_vorticity, lat_lon_grid_deltas;
+from metpy.calc import absolute_vorticity, equivalent_potential_temperature, lat_lon_grid_deltas;
 from awips.dataaccess import DataAccessLayer as DAL;
 
 iso = '%Y-%m-%d %H:%M:%S';  # ISO format for date
@@ -109,4 +109,9 @@ def awips_model_base( request, time, model_vars, mdl2stnd ):
       log.debug( 'Computing absolute vorticity at {}'.format( lvl ) );
       tag = 'abs_vor {}'.format(lvl);                                           # Set tag for vorticity
       data[tag] = absolute_vorticity( data[uTag],data[vTag],dx,dy,data['lat'] );# Compute absolute vorticity
+    if ('temp 1000.0MB' in data) and ('temp_dew 1000.0MB'):
+      log.debug( 'Computing equivalent potential temperature at 1000 hPa' )
+      data['theta_e 1000.0MB'] = equivalent_potential_temperature(
+        1000.0 * units('hPa'), data['temp 1000.0MB'], data['temp_dew 1000.0MB']
+      )
   return data;                                                                  # Return data dictionary
