@@ -10,6 +10,7 @@ from .data_backends.awips_models import NAM40;
 from .plotting.plot_utils       import initFigure, xy_transform, getMapExtentScale;
 from .plotting.model_plots      import (
   plot_rh_mslp_thick,
+  plot_precip_mslp_temps, 
   plot_srfc_temp_barbs,
   plot_1000hPa_theta_e_barbs,
   plot_850hPa_temp_hght_barbs,
@@ -49,7 +50,7 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 21600 ):
   request.setDatatype("grid");
   request.setLocationNames( NAM40['model_name'] );
   
-  times     = awips_fcst_times( request );
+  times     = awips_fcst_times( request, interval = interval );
   timeFMT   = '%Y%m%dT%H%M%S'
   scale     = 2.5e5
   transform = ccrs.PlateCarree();
@@ -63,7 +64,8 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 21600 ):
           '1000-hPa' : os.path.join( outdir, '1000-hPa' ),
           '850-hPa'  : os.path.join( outdir, '850-hPa'  ),
           '500-hPa'  : os.path.join( outdir, '500-hPa'  ),
-          '250-hPa'  : os.path.join( outdir, '250-hPa'  )}
+          '250-hPa'  : os.path.join( outdir, '250-hPa'  ),
+          'precip'   : os.path.join( outdir, 'precip'   )}
   for key, val in dirs.items():                                                 # Iterate over all key/value pairs in dictionary
     if not os.path.isdir(val):                                                  # If the directory does NOT exist
       os.makedirs( val );                                                       # Create it
@@ -72,8 +74,9 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 21600 ):
   plt.subplots_adjust( **opts['subplot_adjust'] );                              # Set up subplot margins
 
   # for i in range( len(times) ):
-  for i in range( 1 ):
-    time = times[i]
+  # for i in range( 2 ):
+  #   time = times[i]
+  for time in times:
     initTime, fcstTime = get_init_fcst_times( time[0] );                        # Get forecast initialization and forecast time as datetime objects
     fcstTime = fcstTime.strftime(timeFMT);                                      # Convert forecast time to string
     
@@ -123,6 +126,19 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 21600 ):
 
       plot_rh_mslp_thick( ax, data, extent = extent )
       fig.savefig( files['mslp'], dpi = dpi )
+
+    # Precip plot
+    fig.clf();
+    if os.path.isfile( files['precip'] ):
+      log.info( 'Precip file exists, skipping: {}'.format(fcstTime) )
+    else:
+      log.info( 'Creating precip image for: {}'.format(fcstTime) )
+      ax = fig.add_subplot(111, projection = mapProj, label = uuid.uuid4())
+      if extent is None:
+        extent, scale = getMapExtentScale( ax, data['lon'], data['lat'] );
+
+      plot_precip_mslp_temps( ax, data, extent = extent )
+      fig.savefig( files['precip'], dpi = dpi )
 
     # Surface temps and wind
     fig.clf();

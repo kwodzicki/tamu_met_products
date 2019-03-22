@@ -11,6 +11,15 @@ def buildCMAP( inVar ):
   inVar['norm'] = BoundaryNorm( inVar['lvls'], inVar['cmap'].N );               # Set colorbar labels?
   return inVar
 
+# precip
+precip = {
+  'rgb' : [ [255, 127,   0,   0,  16,  30,   0,   0, 137, 145, 139, 139, 205, 238, 255, 205],
+            [255, 255, 205, 139,  78, 144, 178, 238, 104,  44,   0,   0,   0,  64, 127, 133],
+            [255,   0,   0,   0, 139, 255, 238, 238, 205, 238, 139,   0,   0,   0,   0,   0] ],
+  'lvls' : contour_levels.precip
+}
+precip = buildCMAP( precip )
+
 # 500 hPa vorticity
 vort_500 = {
   'rgb' : [ [123, 144,  41,  41, 255, 255, 255, 255, 253, 253, 235, 203, 137],

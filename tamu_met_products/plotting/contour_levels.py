@@ -18,6 +18,8 @@ humidity = {
   '700' : np.arange(  60,   91,  10)
 }
 
+precip = np.array([0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 
+                   1.50, 2.00, 2.5, 3.00, 3.5, 4.00, 4.5, 5.0])
 # Temperatures at 850 hPa
 temperature = {
   '2m'  : np.arange(  20,   81,   5),

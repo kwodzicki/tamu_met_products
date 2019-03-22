@@ -25,8 +25,7 @@ def plot_rh_mslp_thick( ax, data, **kwargs ):
     ax       : A GeoAxes object for axes to plot data on
     data     : Dictionary with all data plot
   Keywords:
-    u : u-wind components for wind barbs
-    v : v-wind components for wind barbs
+    Various
   Outputs:
     Returns the filled contour, contour, and colorbar objects
   '''
@@ -90,6 +89,81 @@ def plot_rh_mslp_thick( ax, data, **kwargs ):
 
   return cf, c, cbar
 
+################################################################################
+def plot_precip_mslp_temps( ax, data, **kwargs ):
+  '''
+  Name:
+    plot_precip_mslp_temps
+  Purpose:
+    A python function to plot a surface plot like the one in the
+    lower right of the HDWX 4-panel plot
+  Inputs:
+    ax       : A GeoAxes object for axes to plot data on
+    data     : Dictionary with all data plot
+  Keywords:
+    Various
+  Outputs:
+    Returns the filled contour, contour, and colorbar objects
+  '''
+  log = logging.getLogger(__name__);
+  log.info('Creating precip plot')
+
+  if 'lon' not in data:
+    log.error('No longitude values in data')
+    return None, None, None;
+  elif 'lat' not in data:
+    log.error('No latitude values in data')
+    return None, None, None;
+
+  transform = kwargs.pop( 'transform', None );                                  # Get transformation for x- and y-values
+  if transform is not None:                                                     # If transform is not None, then we must transform the points for plotting
+    xx, yy = xy_transform( ax.projection, transform, data['lon'], data['lat'] )
+  else:
+    xx, yy = data['lon'], data['lat']
+  if 'extent' not in kwargs:
+    kwargs['extent'], scale = getMapExtentScale(ax, xx, yy)
+  ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
+
+  if ('precip 0.0SFC' not in data):
+    log.error('No precipitation data')
+    cf = cbar = None;
+  else:                                                                         # Else, required variables in dictionary
+    log.debug('Plotting precipitation')
+    cf = ax.contourf(xx, yy, data['precip 0.0SFC'].to('inch').m, 
+                      cmap   = color_maps.precip['cmap'], 
+                      norm   = color_maps.precip['norm'],
+                      levels = color_maps.precip['lvls'],
+                      **opts['contourf_Opts'])
+    cbar = add_colorbar( cf, color_maps.precip['lvls'], **kwargs );            # Add colorbar
+
+  if ('geo_hght 1000.0MB' not in data) or ('geo_hght 500.0MB' not in data):     # If the required geopotential heights are NOT in dictionary
+    log.error('No geopotential height info at 1000 hPa or 500 hPa')
+    c = None;
+  else:                                                                         # Else, required variables in dictionary
+    thick  = data['geo_hght 500.0MB'].to('meter').m;
+    thick -= data['geo_hght 1000.0MB'].to('meter').m;                           # Compute thickness
+    c      = ax.contour(xx, yy, thick, **contour_levels.thickness);             # Draw red/blue dashed lines
+    ax.clabel(c, **opts['clabel_Opts']);                                        # Update labels
+
+  if ('mslp 0.0MSL' not in data):                                               # If mean sea level pressure data NOT in dictionary
+    log.error('No mean sea level pressure data')
+    c = None
+  else:                                                                         # Else, required variables in dictionary
+    log.debug('Plotting mean sea level pressure')
+    c = ax.contour(xx, yy, data['mslp 0.0MSL'].to('hPa').m, 
+         levels = contour_levels.mslp, 
+         **opts['contour_Opts']
+        )
+    ax.clabel(c, **opts['clabel_Opts'])
+
+  txt = baseLabel( data['model'], data['initTime'], data['fcstTime'] );         # Get base string for label
+  txt.append('MSLP, SFC AND 850-hPa 0 DEG, 6-HR PRECIP');                       # Update label
+  t = ax.text(0.5, 0, '\n'.join( txt ),
+                 verticalalignment   = 'top', 
+                 horizontalalignment = 'center',
+                 transform           = ax.transAxes);                           # Add label to axes
+
+  return cf, c, cbar
 ################################################################################
 def plot_srfc_temp_barbs( ax, data, **kwargs ):
   '''

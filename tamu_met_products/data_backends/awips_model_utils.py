@@ -46,7 +46,7 @@ def awips_fcst_times( request, interval = 3600, max_forecast = None ):
   '''
   cycles    = DAL.getAvailableTimes(request, True);                             # Get forecast cycles
   times     = DAL.getAvailableTimes(request)                                    # Get forecast times
-  times     = DAL.getForecastRun(cycles[-2], times);                            # Get forecast times in latest cycle
+  times     = DAL.getForecastRun(cycles[-1], times);                            # Get forecast times in latest cycle
 
   if max_forecast is None:
     max_forecast = times[-1].getFcstTime();                                     # Set max_forecast value default based on model
