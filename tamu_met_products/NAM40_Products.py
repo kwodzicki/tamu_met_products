@@ -74,9 +74,9 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 21600 ):
   plt.subplots_adjust( **opts['subplot_adjust'] );                              # Set up subplot margins
 
   # for i in range( len(times) ):
-  # for i in range( 2 ):
-  #   time = times[i]
-  for time in times:
+  for i in range( 1 ):
+    time = times[i]
+  # for time in times:
     initTime, fcstTime = get_init_fcst_times( time[0] );                        # Get forecast initialization and forecast time as datetime objects
     fcstTime = fcstTime.strftime(timeFMT);                                      # Convert forecast time to string
     
@@ -106,10 +106,10 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 21600 ):
              fig.add_subplot(224, projection = mapProj, label = uuid.uuid4())]
 
       extent, scale = getMapExtentScale( ax[0], data['lon'], data['lat'] )
-      plot_500hPa_vort_hght_barbs(    ax[0], data, extent = extent );
-      plot_250hPa_isotach_hght_barbs( ax[1], data, extent = extent );
-      plot_850hPa_temp_hght_barbs(    ax[2], data, extent = extent );
-      plot_rh_mslp_thick(        ax[3], data, extent = extent );
+      plot_500hPa_vort_hght_barbs(    ax[0], data, extent=extent );
+      plot_250hPa_isotach_hght_barbs( ax[1], data, extent=extent );
+      plot_850hPa_temp_hght_barbs(    ax[2], data, extent=extent );
+      plot_rh_mslp_thick(             ax[3], data, extent=extent );
 
       fig.savefig( files['4-panel'], dpi = dpi )
 

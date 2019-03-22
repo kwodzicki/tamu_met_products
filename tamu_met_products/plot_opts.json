@@ -19,8 +19,7 @@
       "rightside_up"   : true
   },
   "barb_Opts" : {
-      "linewidth" :  0.25,
-      "length"    :  6.0
+      "linewidth" :  0.25
   },
   "subplot_adjust" : {
       "left"   : 0.005, 
@@ -37,6 +36,6 @@
   "projection" : {
     "name"              : "LambertConformal",
     "central_latitude"  :   40.0,
-    "central_longitude" : -100.0
+    "central_longitude" :  -92.5
   }
 }

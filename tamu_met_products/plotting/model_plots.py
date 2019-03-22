@@ -5,7 +5,15 @@ import matplotlib.pyplot as plt;
 import cartopy.crs as ccrs;
 from metpy.calc import wind_speed;
 
-from .plot_utils import initFigure, add_colorbar, plot_barbs, plot_basemap, baseLabel, xy_transform, getMapExtentScale;
+from .plot_utils import (
+  initFigure, 
+  add_colorbar, 
+  plot_barbs, 
+  plot_basemap, 
+  baseLabel, 
+  xy_transform, 
+  getMapExtentScale
+);
 from . import color_maps;
 from . import contour_levels;
 
@@ -121,7 +129,7 @@ def plot_precip_mslp_temps( ax, data, **kwargs ):
   else:
     xx, yy = data['lon'], data['lat']
   if 'extent' not in kwargs:
-    kwargs['extent'], scale = getMapExtentScale(ax, xx, yy)
+    kwargs['extent'], kwargs['scale'] = getMapExtentScale(ax, xx, yy)
   ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
 
   if ('precip 0.0SFC' not in data):
@@ -136,25 +144,38 @@ def plot_precip_mslp_temps( ax, data, **kwargs ):
                       **opts['contourf_Opts'])
     cbar = add_colorbar( cf, color_maps.precip['lvls'], **kwargs );            # Add colorbar
 
-  if ('geo_hght 1000.0MB' not in data) or ('geo_hght 500.0MB' not in data):     # If the required geopotential heights are NOT in dictionary
-    log.error('No geopotential height info at 1000 hPa or 500 hPa')
-    c = None;
-  else:                                                                         # Else, required variables in dictionary
-    thick  = data['geo_hght 500.0MB'].to('meter').m;
-    thick -= data['geo_hght 1000.0MB'].to('meter').m;                           # Compute thickness
-    c      = ax.contour(xx, yy, thick, **contour_levels.thickness);             # Draw red/blue dashed lines
-    ax.clabel(c, **opts['clabel_Opts']);                                        # Update labels
+  # 850 temp
+  if ('temp 850.0MB' not in data):
+    log.error('No temperature data!')
+    c1 = c2 = None;
+  else:
+    log.debug('Plotting surface temperature')
+    temp = data['temp 850.0MB'].to('degC')
+    c1   = ax.contour(xx, yy, temp.m, 
+           levels = 0, colors = (1,0,0), linewidths = 4);                       # Contour for 0 degree C line
+    c2   = ax.contour(xx, yy, temp.m, 
+           levels = 0, colors = (1,1,1), linewidths = 2);                       # Contour for 0 degree C line
 
+  # Surface temp
+  if ('temp 2.0FHAG' not in data):
+    log.error('No temperature data!')
+    c3 = None;
+  else:
+    log.debug('Plotting surface temperature')
+    c3 = ax.contour(xx, yy, data['temp 2.0FHAG'].to('degC').m, 
+           levels = 0, colors = (1,0,0), linewidths = 4);                       # Contour for 0 degree C line
+
+  # MSLP
   if ('mslp 0.0MSL' not in data):                                               # If mean sea level pressure data NOT in dictionary
     log.error('No mean sea level pressure data')
-    c = None
+    c4 = None
   else:                                                                         # Else, required variables in dictionary
     log.debug('Plotting mean sea level pressure')
-    c = ax.contour(xx, yy, data['mslp 0.0MSL'].to('hPa').m, 
+    c4 = ax.contour(xx, yy, data['mslp 0.0MSL'].to('hPa').m, 
          levels = contour_levels.mslp, 
          **opts['contour_Opts']
         )
-    ax.clabel(c, **opts['clabel_Opts'])
+    ax.clabel(c4, **opts['clabel_Opts'])
 
   txt = baseLabel( data['model'], data['initTime'], data['fcstTime'] );         # Get base string for label
   txt.append('MSLP, SFC AND 850-hPa 0 DEG, 6-HR PRECIP');                       # Update label
@@ -163,7 +184,7 @@ def plot_precip_mslp_temps( ax, data, **kwargs ):
                  horizontalalignment = 'center',
                  transform           = ax.transAxes);                           # Add label to axes
 
-  return cf, c, cbar
+  return cf, (c1, c2, c3, c4), cbar
 ################################################################################
 def plot_srfc_temp_barbs( ax, data, **kwargs ):
   '''
@@ -196,7 +217,7 @@ def plot_srfc_temp_barbs( ax, data, **kwargs ):
   else:
     xx, yy = data['lon'], data['lat']
   if 'extent' not in kwargs:
-    kwargs['extent'], scale = getMapExtentScale(ax, xx, yy)
+    kwargs['extent'], kwargs['scale'] = getMapExtentScale(ax, xx, yy, **kwargs)
   ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
 
   if ('temp 2.0FHAG' not in data):
@@ -214,7 +235,9 @@ def plot_srfc_temp_barbs( ax, data, **kwargs ):
   if ('u_wind 10.0FHAG' not in data) or ('v_wind 10.0FHAG' not in data):
     log.error('Missing wind component(s)!')
   else:
-    plot_barbs( ax, xx, yy, data['u_wind 10.0FHAG'], data['v_wind 10.0FHAG'] ); # Plot wind barbs
+    plot_barbs(
+      ax, xx, yy, data['u_wind 10.0FHAG'], data['v_wind 10.0FHAG'], **kwargs
+    );                                                                          # Plot wind barbs
 
   txt = baseLabel( data['model'], data['initTime'], data['fcstTime'] );         # Get base string for label
   txt.append('2-M TEMP (F) AND 10-M WINDS');                                    # Update label
@@ -322,7 +345,7 @@ def plot_850hPa_temp_hght_barbs( ax, data, **kwargs ):
     xx, yy = data['lon'], data['lat']
 
   if 'extent' not in kwargs:
-    kwargs['extent'], scale = getMapExtentScale(ax, xx, yy)
+    kwargs['extent'], kwargs['scale'] = getMapExtentScale(ax, xx, yy, **kwargs)
   ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
 
   if ('temp 850.0MB' not in data):
@@ -354,7 +377,9 @@ def plot_850hPa_temp_hght_barbs( ax, data, **kwargs ):
   if ('u_wind 850.0MB' not in data) or ('v_wind 850.0MB' not in data):
     log.error('Missing wind component(s)!')
   else:
-    plot_barbs( ax, xx, yy, data['u_wind 850.0MB'], data['v_wind 850.0MB'] );   # Plot wind barbs
+    plot_barbs(
+      ax, xx, yy, data['u_wind 850.0MB'], data['v_wind 850.0MB'], **kwargs
+    );                                                                          # Plot wind barbs
 
   txt = baseLabel( data['model'], data['initTime'], data['fcstTime'] );         # Get base string for label
   txt.append('850-hPa HEIGHTS, WINDS, TEMP (C)');                               # Update label
@@ -401,7 +426,7 @@ def plot_500hPa_vort_hght_barbs( ax, data, **kwargs ):
     xx, yy = data['lon'], data['lat']
 
   if 'extent' not in kwargs:
-    kwargs['extent'], scale = getMapExtentScale(ax, xx, yy)
+    kwargs['extent'], kwargs['scale'] = getMapExtentScale(ax, xx, yy, **kwargs)
   ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
 
   if 'abs_vor 500.0MB' not in data:
@@ -430,7 +455,9 @@ def plot_500hPa_vort_hght_barbs( ax, data, **kwargs ):
   if ('u_wind 500.0MB' not in data) or ('v_wind 500.0MB' not in data):
     log.error('Missing wind component(s)!')
   else:
-    plot_barbs( ax, xx, yy, data['u_wind 500.0MB'], data['v_wind 500.0MB'] );   # Plot wind barbs
+    plot_barbs(
+      ax, xx, yy, data['u_wind 500.0MB'], data['v_wind 500.0MB'], **kwargs
+    );                                                                          # Plot wind barbs
   
   txt = baseLabel( data['model'], data['initTime'], data['fcstTime'] );                         # Get base string for label
   txt.append('500-hPa HEIGHTS, WINDS, ABS VORT');                               # Update Label 
@@ -475,7 +502,7 @@ def plot_250hPa_isotach_hght_barbs( ax, data, **kwargs ):
     xx, yy = data['lon'], data['lat']
 
   if 'extent' not in kwargs:
-    kwargs['extent'], scale = getMapExtentScale(ax, xx, yy)
+    kwargs['extent'], kwargs['scale'] = getMapExtentScale(ax, xx, yy, **kwargs)
   ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
 
   if ('u_wind 250.0MB' not in data) or ('v_wind 250.0MB' not in data):
@@ -503,7 +530,9 @@ def plot_250hPa_isotach_hght_barbs( ax, data, **kwargs ):
     ax.clabel(c, **opts['clabel_Opts']);                                        # Change contour label settings
 
   if cf is not None:                                                            # If cf is not None, that means the u- and v-winds exist
-    plot_barbs( ax, xx, yy, data['u_wind 250.0MB'], data['v_wind 250.0MB'] );   # Plot wind barbs
+    plot_barbs(
+      ax, xx, yy, data['u_wind 250.0MB'], data['v_wind 250.0MB'], **kwargs
+    );                                                                          # Plot wind barbs
 
   txt = baseLabel( data['model'], data['initTime'], data['fcstTime'] );         # Get base string for label
   txt.append('250-hPa HEIGHTS, WINDS, ISOTACHS (KT)');                          # Update label

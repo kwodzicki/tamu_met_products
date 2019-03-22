@@ -32,7 +32,51 @@ def initFigure(nrows, ncols, **kwargs):
   return fig, ax
 
 ################################################################################
-def getMapExtentScale(ax, xx = None, yy = None, scale = None):
+def getMapScale(ax, xx = None, yy = None, **kwargs):
+  '''
+  Name:
+    getMapScale
+  Purpose:
+    A python function to determine map extent based on data size
+  Inputs:
+    ax    : GeoAxis object to plot data on
+  Keywords:
+    xx  : x-values of data to plot. MUST BE USED WITH YY.
+           If input, will be used to determine best scaling for x & y.
+           Will override the scale keyword; i.e., if you want a specific
+           scaling, use ONLY the scale keyword
+    xx  : y-values of data to plot. MUST BE USED WITH xx.
+           If input, will be used to determine best scaling for x & y.
+           Will override the scale keyword; i.e., if you want a specific
+           scaling, use ONLY the scale keyword
+    scale : Set scale of the plot where scale is distance in meters that
+             one (1) centimeter on the plot will covert. Will determine 
+             extent based on plotting area.
+  Outputs:
+    Returns the map extent and map scale
+  '''  
+  log   = logging.getLogger(__name__)
+  scale = kwargs['scale'] if 'scale' in kwargs else None;                       # Default value for scale keyword
+
+  fig_w,fig_h              = ax.figure.get_size_inches() * 2.54;                # Get size of figure in centimeters
+  ax_x0, ax_y0, ax_w, ax_h = ax._position.bounds;                               # Get size of axes relative to figure size
+  
+  if (xx is not None) and (yy is not None):
+    msgFMT  = None;
+    x_scale = (xx.max()-xx.min()) / (fig_w * ax_w)
+    y_scale = (yy.max()-yy.min()) / (fig_h * ax_h)
+    if scale is None:
+      msgFMT = 'Setting map scale: {:8.3f}'
+    else:
+      msgFMT = 'Changing user defined scale: {:8.3f} -> {}'.format( scale, '{:8.3f}' )
+    # scale   = x_scale if (x_scale >= y_scale) else y_scale;
+    scale   = x_scale if (x_scale <= y_scale) else y_scale;
+    if msgFMT is not None:
+      log.info( msgFMT.format(scale) )
+  return scale
+
+################################################################################
+def getMapExtentScale(ax, xx = None, yy = None, **kwargs):
   '''
   Name:
     getMapExtentScale
@@ -55,24 +99,12 @@ def getMapExtentScale(ax, xx = None, yy = None, scale = None):
   Outputs:
     Returns the map extent and map scale
   '''  
-  log = logging.getLogger(__name__)
+  log   = logging.getLogger(__name__)
 
-  fig_w,fig_h = ax.figure.get_size_inches() * 2.54;                             # Get size of figure in centimeters
-  log.debug( 'Figure size: {:5.2f}x{:5.2f}'.format( fig_w, fig_h) );
-
-  ax_x0,ax_y0,ax_w,ax_h = ax._position.bounds;                                  # Get size of axes relative to figure size
-  log.debug( 'Axis size:   {:5.3f}x{:5.3f}, {:5.3f}x{:5.3f}'.format( ax_x0, ax_y0, ax_w,  ax_h) );
+  fig_w,fig_h              = ax.figure.get_size_inches() * 2.54;                # Get size of figure in centimeters
+  ax_x0, ax_y0, ax_w, ax_h = ax._position.bounds;                               # Get size of axes relative to figure size
   
-  if (xx is not None) and (yy is not None):
-    msgFMT  = None;
-    x_scale = (xx.max()-xx.min()) / (fig_w * ax_w)
-    y_scale = (yy.max()-yy.min()) / (fig_h * ax_h)
-    if scale is not None:
-      msgFMT = 'Changing user defined scale: {:8.3f} -> {}'.format( scale, '{:8.3f}' )
-    scale   = x_scale if (x_scale >= y_scale) else y_scale;
-    if msgFMT is not None:
-      log.info( msgFMT.format(scale) )
-
+  scale   = getMapScale( ax, xx = xx, yy = yy, **kwargs);                       # Get scaling for the map
   dx      = scale * (fig_w * ax_w) / 2.0;                                       # Multiply figure width by axis width, divide by 2 and multiply by scale
   dy      = scale * (fig_h * ax_h) / 2.0;                                       # Multiply figure height by axis height, divide by 2 and multiply by scale
   extent  = (-dx, dx, -dy, dy)
@@ -169,7 +201,7 @@ def add_colorbar( mappable, ticks, **kwargs ):
 
   ax_x0, ax_y0, ax_w, ax_h = ax._position.bounds;                               # Get size of axes relative to figure size
   ax_w  /=  4.0;                                                                # Divide axis width by 4
-  rect   = (ax_x0, ax_y0-2.0*cbHeight, ax_w, cbHeight)
+  rect   = (ax_x0, ax_y0-2.5*cbHeight, ax_w, cbHeight)
   cb_ax  = ax.figure.add_axes( rect, label = uuid.uuid4() );                    # Add axis for the color bar
   cbar   = plt.colorbar(mappable, cax=cb_ax, ticks=ticks, **opts['colorbar']);  # Generate the colorbar
   cbar.ax.xaxis.set_ticks_position('top');                                      # Place labels on top of color bar
@@ -183,7 +215,7 @@ def add_colorbar( mappable, ticks, **kwargs ):
   return cbar;                                                                  # Return the colorbar object
 
 ################################################################################
-def plot_barbs( ax, xx, yy, u, v ):
+def plot_barbs( ax, xx, yy, u, v, **kwargs ):
   '''
   Name:
     plot_barbs
@@ -196,15 +228,18 @@ def plot_barbs( ax, xx, yy, u, v ):
     yy     : y-values (in map coordinates) of where to plot barbs
     u      : u-wind values; Must be pint Quantity
     v      : v-wind values; Must be pint Quantity
+    scale  : Scale of the map
   Keywords:
     None.
   Outputs:
     None.
   '''
   log = logging.getLogger(__name__);                                            # Logger for the function
-  log.debug( 'Computing skip for winds at 2 degree spacing' )
+  scale = kwargs['scale'] if 'scale' in kwargs else getMapScale( ax, xx, yy )   # Compute map scale if none input
+  log.debug( 'Computing skip for winds at scale of 1:{}'.format( scale ) )
+
   diff, skip = 0, 0;                                                            # Initialize difference between x-values and skip
-  while diff < 2.0e5:                                                           # While the difference is less than roughly 2 degrees
+  while diff < scale:                                                           # While the difference is less than roughly 2 degrees
     skip += 1;                                                                  # Increment skip
     diff  = abs(xx[0,skip] - xx[0,0]);                                          # Compute new difference
   log.debug( 'Skipping every {} values'.format(skip) )
