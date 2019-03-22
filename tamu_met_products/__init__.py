@@ -8,6 +8,6 @@ srm.setFormatter(
   )
 )
 
-srm.setLevel( logging.INFO )
+srm.setLevel( logging.DEBUG )
 log.setLevel( logging.DEBUG )
 log.addHandler( srm )

@@ -4,7 +4,7 @@ from awips.dataaccess import DataAccessLayer as DAL;
 import matplotlib.pyplot as plt;
 import cartopy.crs as ccrs;
 
-from .data_backends.awips_model_utils import awips_fcst_times, awips_model_base;
+from .data_backends.awips_model_utils import awips_fcst_times, get_init_fcst_times, awips_model_base;
 from .data_backends.awips_models import NAM40;
 
 from .plotting.plot_utils       import initFigure, xy_transform, getMapExtentScale;
@@ -21,7 +21,7 @@ dir = os.path.dirname( os.path.realpath(__file__) );
 with open( os.path.join( dir, 'plot_opts.json' ), 'r' ) as fid:
   opts = json.load(fid);
 
-def NAM40_Products( outdir = None, dpi = 120, interval = 6 ):
+def NAM40_Products( outdir = None, dpi = 120, interval = 21600 ):
   '''
   Name:
     NAM40_Products
@@ -32,7 +32,8 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 6 ):
   Outputs:
     Returns a dictionary containing all data
   Keywords:
-    interval : Interval, in hours, for forecast plot creation
+    interval : Interval, in seconds, for forecast plot creation.
+                 Default is 6 hourly (21600 s)
     EDEX   : URL for EDEX host to use
   '''
   log = logging.getLogger(__name__);                                            # Set up function for logger
@@ -48,7 +49,7 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 6 ):
   request.setDatatype("grid");
   request.setLocationNames( NAM40['model_name'] );
   
-  initTime, fcstTimes, times = awips_fcst_times( request );
+  times     = awips_fcst_times( request );
   timeFMT   = '%Y%m%dT%H%M%S'
   scale     = 2.5e5
   transform = ccrs.PlateCarree();
@@ -72,11 +73,9 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 6 ):
 
   # for i in range( len(times) ):
   for i in range( 1 ):
-    if (fcstTimes[i].hour % interval) != 0: continue;                           # If the forecast hour does not fall on the requested interval, skip it
-    period = times[i].getValidPeriod().duration() // 3600;                      # Get the period over which the forecast time is valid
-    if (period != 1) and ((period % interval) != 0): continue;                  # If the period is NOT an hour AND NOT the interval, continue
-
-    fcstTime = fcstTimes[i].strftime(timeFMT)
+    time = times[i]
+    initTime, fcstTime = get_init_fcst_times( time[0] );                        # Get forecast initialization and forecast time as datetime objects
+    fcstTime = fcstTime.strftime(timeFMT);                                      # Convert forecast time to string
     
     base_file  = '{}_{}.png'.format( NAM40['model_name'], fcstTime )
     filesExist = True;
@@ -87,7 +86,7 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 6 ):
         filesExist = False
 
     if not filesExist:                                                          # If any of the plot files are missing
-      data = awips_model_base( request, times[i], NAM40['model_vars'], NAM40['mdl2stnd'] )
+      data = awips_model_base( request, time, NAM40['model_vars'], NAM40['mdl2stnd'] )
       data['lon'], data['lat'] = xy_transform(
         mapProj, transform, data['lon'], data['lat']
       );                                                                        # Transform the data; saves some time
@@ -95,9 +94,9 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 6 ):
     # 4-panel plot
     fig.clf();
     if os.path.isfile( files['4-panel'] ):
-      log.info( '4-Panel file exists, skipping: {}'.format(fcstTimes[i]) )
+      log.info( '4-Panel file exists, skipping: {}'.format(fcstTime) )
     else:
-      log.info( 'Creating 4-panel image for: {}'.format(fcstTimes[i]) )
+      log.info( 'Creating 4-panel image for: {}'.format(fcstTime) )
       ax = [ fig.add_subplot(221, projection = mapProj, label = uuid.uuid4()),
              fig.add_subplot(222, projection = mapProj, label = uuid.uuid4()),
              fig.add_subplot(223, projection = mapProj, label = uuid.uuid4()),
@@ -115,9 +114,9 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 6 ):
     # MSLP plot
     fig.clf();
     if os.path.isfile( files['mslp'] ):
-      log.info( 'MSLP file exists, skipping: {}'.format(fcstTimes[i]) )
+      log.info( 'MSLP file exists, skipping: {}'.format(fcstTime) )
     else:
-      log.info( 'Creating MSLP image for: {}'.format(fcstTimes[i]) )
+      log.info( 'Creating MSLP image for: {}'.format(fcstTime) )
       ax = fig.add_subplot(111, projection = mapProj, label = uuid.uuid4())
       if extent is None:
         extent, scale = getMapExtentScale( ax, data['lon'], data['lat'] );
@@ -128,9 +127,9 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 6 ):
     # Surface temps and wind
     fig.clf();
     if os.path.isfile( files['surface'] ):
-      log.info( 'surface file exists, skipping: {}'.format(fcstTimes[i]) )
+      log.info( 'surface file exists, skipping: {}'.format(fcstTime) )
     else:
-      log.info( 'Creating surface image for: {}'.format(fcstTimes[i]) )
+      log.info( 'Creating surface image for: {}'.format(fcstTime) )
       ax = fig.add_subplot(111, projection = mapProj, label = uuid.uuid4())
       if extent is None:
         extent, scale = getMapExtentScale( ax, data['lon'], data['lat'] );
@@ -141,9 +140,9 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 6 ):
     # 1000-hPa Theta-E Plot
     fig.clf();
     if os.path.isfile( files['1000-hPa'] ):
-      log.info( '1000-hPa file exists, skipping: {}'.format(fcstTimes[i]) )
+      log.info( '1000-hPa file exists, skipping: {}'.format(fcstTime) )
     else:
-      log.info( 'Creating 1000-hPa image for: {}'.format(fcstTimes[i]) )
+      log.info( 'Creating 1000-hPa image for: {}'.format(fcstTime) )
       ax = fig.add_subplot(111, projection = mapProj, label = uuid.uuid4())
       if extent is None:
         extent, scale = getMapExtentScale( ax, data['lon'], data['lat'] );
@@ -154,9 +153,9 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 6 ):
     # 850-hPa Plot
     fig.clf();
     if os.path.isfile( files['850-hPa'] ):
-      log.info( '850-hPa file exists, skipping: {}'.format(fcstTimes[i]) )
+      log.info( '850-hPa file exists, skipping: {}'.format(fcstTime) )
     else:
-      log.info( 'Creating 850-hPa image for: {}'.format(fcstTimes[i]) )
+      log.info( 'Creating 850-hPa image for: {}'.format(fcstTime) )
       ax = fig.add_subplot(111, projection = mapProj, label = uuid.uuid4())
       if extent is None:
         extent, scale = getMapExtentScale( ax, data['lon'], data['lat'] );
@@ -168,9 +167,9 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 6 ):
     # 500-hPa Plot
     fig.clf();
     if os.path.isfile( files['500-hPa'] ):
-      log.info( '500-hPa file exists, skipping: {}'.format(fcstTimes[i]) )
+      log.info( '500-hPa file exists, skipping: {}'.format(fcstTime) )
     else:
-      log.info( 'Creating 500-hPa image for: {}'.format(fcstTimes[i]) )
+      log.info( 'Creating 500-hPa image for: {}'.format(fcstTime) )
       ax = fig.add_subplot(111, projection = mapProj, label = uuid.uuid4())
       if extent is None:
         extent, scale = getMapExtentScale( ax, data['lon'], data['lat'] );
@@ -182,9 +181,9 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 6 ):
     # 250-hPa Plot
     fig.clf();
     if os.path.isfile( files['250-hPa'] ):
-      log.info( '250-hPa file exists, skipping: {}'.format(fcstTimes[i]) )
+      log.info( '250-hPa file exists, skipping: {}'.format(fcstTime) )
     else:
-      log.info( 'Creating 250-hPa image for: {}'.format(fcstTimes[i]) )
+      log.info( 'Creating 250-hPa image for: {}'.format(fcstTime) )
       ax = fig.add_subplot(111, projection = mapProj, label = uuid.uuid4())
       if extent is None:
         extent, scale = getMapExtentScale( ax, data['lon'], data['lat'] );

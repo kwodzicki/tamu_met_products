@@ -28,7 +28,7 @@ def get_init_fcst_times( time ):
   return initTime, fcstTime
 
 ################################################################################
-def awips_fcst_times( request ):
+def awips_fcst_times( request, interval = 3600, max_forecast = None ):
   '''
   Name:
     awips_fcst_times
@@ -39,14 +39,28 @@ def awips_fcst_times( request ):
   Outputs:
     Returns a list of forecast times
   Keywords:
-    None
+    interval     : Time step between forecast times in seconds
+                      Default is 3600s (1 hour)
+    max_forecast : Maximum forecast time to get, in seconds.
+                      Default is last available time
   '''
   cycles    = DAL.getAvailableTimes(request, True);                             # Get forecast cycles
   times     = DAL.getAvailableTimes(request)                                    # Get forecast times
   times     = DAL.getForecastRun(cycles[-2], times);                            # Get forecast times in latest cycle
-  initTime  = datetime.strptime( str(times[0]), iso );                          # Reference time; i.e., initialization time
-  fcstTimes = [initTime + timedelta( seconds=t.getFcstTime() ) for t in times]; # Get all forecast times
-  return initTime, fcstTimes, times                                             # Return forecast runs for latest cycle
+
+  if max_forecast is None:
+    max_forecast = times[-1].getFcstTime();                                     # Set max_forecast value default based on model
+  nTimes    =  max_forecast // interval;                                        # Number of forecast steps to get based on inteval
+  flt_times = [ [] for i in range( nTimes ) ]                                   # Initialized list of empty lists for forecast times
+  
+  for time in times:                                                            # Iterate over all times
+    fcstTime = time.getFcstTime();                                              # Get the valid forecast time
+    if ((fcstTime % interval) == 0) and (fcstTime < max_forecast):              # If the forecast hour falls on the interval requested AND is before the max forecast time
+      fcstDur = time.getValidPeriod().duration();                               # Get duration of the forecast period
+      if (fcstDur == 0) or (fcstDur == interval):                               # If instantaneous forecast period OR period covers requested interval
+        index = fcstTime // interval;                                           # Index for the times flt_times array
+        flt_times[index].append( time );                                        # Append the time to the list at index
+  return flt_times;                                                             # Return forecast runs for latest cycle
 
 ################################################################################
 def awips_model_base( request, time, model_vars, mdl2stnd ):
@@ -57,7 +71,7 @@ def awips_model_base( request, time, model_vars, mdl2stnd ):
     A function to get data from NAM40 model to create HDWX products
   Inputs:
     request    : A DataAccessLayer request object
-    time       : Datatime for data to grab
+    time       : List of datatime(s) for data to grab
     model_vars : Dictionary with variables/levels to get
     mdl2stnd   : Dictionary to convert from model variable names
                   to standardized names
@@ -67,7 +81,7 @@ def awips_model_base( request, time, model_vars, mdl2stnd ):
     EDEX   : URL for EDEX host to use
   '''
   log = logging.getLogger(__name__);                                            # Set up function for logger
-  initTime, fcstTime = get_init_fcst_times( time )
+  initTime, fcstTime = get_init_fcst_times( time[0] )
   data = {'model'    : request.getLocationNames()[0],
           'initTime' : initTime,
           'fcstTime' : fcstTime};                                               # Initialize empty dictionary
@@ -78,8 +92,8 @@ def awips_model_base( request, time, model_vars, mdl2stnd ):
     log.debug( 'Getting: {}'.format( var ) );
     request.setParameters( *model_vars[var]['parameters'] );                    # Set parameters for the download request
     request.setLevels(     *model_vars[var]['levels'] );                        # Set levels for the download request
-
-    response = DAL.getGridData(request, [time ])                                # Request the data
+    
+    response = DAL.getGridData(request, time)                                   # Request the data
 
     for res in response:                                                        # Iterate over all data request responses
       varName = res.getParameter();                                             # Get name of the variable in the response
