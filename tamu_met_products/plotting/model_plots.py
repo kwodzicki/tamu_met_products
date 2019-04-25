@@ -56,37 +56,41 @@ def plot_rh_mslp_thick( ax, data, **kwargs ):
     kwargs['extent'], scale = getMapExtentScale(ax, xx, yy)
   ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
 
-  if ('rh 700.0MB' not in data):
-    log.error('No relative humidity data')
-    cf = cbar = None;
-  else:                                                                         # Else, required variables in dictionary
+  cf = c = cbar = None
+  if 'rh' not in data:
+    log.error( 'No relative humidity data')
+  elif '700.0MB' not in data['rh']:
+    log.error( 'No relative humidity data at 700 hPa')
+  else:
     log.debug('Plotting relative humidity')
-    cf = ax.contourf(xx, yy, data['rh 700.0MB'], 
+    cf = ax.contourf(xx, yy, data['rh']['700.0MB'], 
                       cmap   = color_maps.surface['cmap'], 
                       norm   = color_maps.surface['norm'],
                       levels = color_maps.surface['lvls'],
                       **opts['contourf_Opts'])
     cbar = add_colorbar( cf, color_maps.surface['lvls'], **kwargs );            # Add colorbar
-
-  if ('geo_hght 1000.0MB' not in data) or ('geo_hght 500.0MB' not in data):     # If the required geopotential heights are NOT in dictionary
-    log.error('No geopotential height info at 1000 hPa or 500 hPa')
-    c = None;
+  
+  if 'geopotential' not in data:
+    log.error( 'No geopotential height data') 
+  elif '1000.0MB' not in data['geopotential height']:
+    log.error('Missing geopotential height data for 1000 hPa')
+  elif '500.0MB' not in data['geopotential height']:
+    log.error('No geopotential height data for 500 hPa')
   else:                                                                         # Else, required variables in dictionary
-    thick  = data['geo_hght 500.0MB'].to('meter').m;
-    thick -= data['geo_hght 1000.0MB'].to('meter').m;                           # Compute thickness
+    thick  = data['geopotential height']['500.0MB'].to('meter').m;
+    thick -= data['geopotential height']['1000.0MB'].to('meter').m;                    # Compute thickness
     c      = ax.contour(xx, yy, thick, **contour_levels.thickness);             # Draw red/blue dashed lines
     ax.clabel(c, **opts['clabel_Opts']);                                        # Update labels
 
-  if ('mslp 0.0MSL' not in data):                                               # If mean sea level pressure data NOT in dictionary
-    log.error('No mean sea level pressure data')
-    c = None
-  else:                                                                         # Else, required variables in dictionary
+  if ('mslp' in data) and ('0.0MSL' in data['mslp']):
     log.debug('Plotting mean sea level pressure')
-    c = ax.contour(xx, yy, data['mslp 0.0MSL'].to('hPa').m, 
+    c = ax.contour(xx, yy, data['mslp']['0.0MSL'].to('hPa').m, 
          levels = contour_levels.mslp, 
          **opts['contour_Opts']
         )
     ax.clabel(c, **opts['clabel_Opts'])
+  else:
+    log.error('No mean sea level pressure data')
 
   txt = baseLabel( data['model'], data['initTime'], data['fcstTime'] );         # Get base string for label
   txt.append('700-hPa RH, MSLP, 1000--500-hPa THICK');                          # Update label
@@ -132,50 +136,50 @@ def plot_precip_mslp_temps( ax, data, **kwargs ):
     kwargs['extent'], kwargs['scale'] = getMapExtentScale(ax, xx, yy)
   ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
 
-  if ('precip 0.0SFC' not in data):
-    log.error('No precipitation data')
-    cf = cbar = None;
-  else:                                                                         # Else, required variables in dictionary
+  cf = c1 = c2 = c3 = c4 = cbar = None
+  if ('precip' in data) and ('0.0SFC' in data['precip']):
     log.debug('Plotting precipitation')
-    cf = ax.contourf(xx, yy, data['precip 0.0SFC'].to('inch').m, 
+    cf = ax.contourf(xx, yy, data['precip']['0.0SFC'].to('inch').m, 
                       cmap   = color_maps.precip['cmap'], 
                       norm   = color_maps.precip['norm'],
                       levels = color_maps.precip['lvls'],
                       **opts['contourf_Opts'])
     cbar = add_colorbar( cf, color_maps.precip['lvls'], **kwargs );            # Add colorbar
-
-  # 850 temp
-  if ('temp 850.0MB' not in data):
-    log.error('No temperature data!')
-    c1 = c2 = None;
   else:
-    log.debug('Plotting surface temperature')
-    temp = data['temp 850.0MB'].to('degC')
-    c1   = ax.contour(xx, yy, temp.m, 
-           levels = 0, colors = (1,0,0), linewidths = 4);                       # Contour for 0 degree C line
-    c2   = ax.contour(xx, yy, temp.m, 
-           levels = 0, colors = (1,1,1), linewidths = 2);                       # Contour for 0 degree C line
+    log.error('No precipitation data')
 
-  # Surface temp
-  if ('temp 2.0FHAG' not in data):
-    log.error('No temperature data!')
-    c3 = None;
+  # Temperature
+  if 'temperature' not in data:
+    log.error( 'No temperature data')
   else:
-    log.debug('Plotting surface temperature')
-    c3 = ax.contour(xx, yy, data['temp 2.0FHAG'].to('degC').m, 
+    # 850 temp
+    if '850.0MB' not in data['temperature']:
+      log.error('No temperature data!')
+    else:
+      log.debug('Plotting surface temperature')
+      temp = data['temperature']['850.0MB'].to('degC')
+      c1   = ax.contour(xx, yy, temp.m, 
+             levels = 0, colors = (1,0,0), linewidths = 4);                       # Contour for 0 degree C line
+      c2   = ax.contour(xx, yy, temp.m, 
+             levels = 0, colors = (1,1,1), linewidths = 2);                       # Contour for 0 degree C line
+    # Surface temp
+    if '2.0FHAG' not in data['temperature']:
+      log.error('No temperature data!')
+    else:
+      log.debug('Plotting surface temperature')
+      c3 = ax.contour(xx, yy, data['temperature']['2.0FHAG'].to('degC').m, 
            levels = 0, colors = (1,0,0), linewidths = 4);                       # Contour for 0 degree C line
 
   # MSLP
-  if ('mslp 0.0MSL' not in data):                                               # If mean sea level pressure data NOT in dictionary
-    log.error('No mean sea level pressure data')
-    c4 = None
-  else:                                                                         # Else, required variables in dictionary
+  if ('mslp' in data) and ('0.0MSL' in data['mslp']):                                               # If mean sea level pressure data NOT in dictionary
     log.debug('Plotting mean sea level pressure')
-    c4 = ax.contour(xx, yy, data['mslp 0.0MSL'].to('hPa').m, 
+    c4 = ax.contour(xx, yy, data['mslp']['0.0MSL'].to('hPa').m, 
          levels = contour_levels.mslp, 
          **opts['contour_Opts']
         )
     ax.clabel(c4, **opts['clabel_Opts'])
+  else:
+    log.error('No mean sea level pressure data')
 
   txt = baseLabel( data['model'], data['initTime'], data['fcstTime'] );         # Get base string for label
   txt.append('MSLP, SFC AND 850-hPa 0 DEG, 6-HR PRECIP');                       # Update label
@@ -220,23 +224,31 @@ def plot_srfc_temp_barbs( ax, data, **kwargs ):
     kwargs['extent'], kwargs['scale'] = getMapExtentScale(ax, xx, yy, **kwargs)
   ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
 
-  if ('temp 2.0FHAG' not in data):
+  cf = c = cbar = None
+  if 'temperature' not in data:
     log.error('No temperature data')
-    cf = cbar = None;
+  elif '2.0FHAG' not in data:
+    log.error('No 2 meter temperature data')
   else:                                                                         # Else, required variables in dictionary
     log.debug('Plotting temperature data')
-    cf = ax.contourf(xx, yy, data['temp 2.0FHAG'].to('degF').m, 
+    cf = ax.contourf(xx, yy, data['temperature']['2.0FHAG'].to('degF').m, 
                       cmap   = color_maps.temp_2m['cmap'], 
                       norm   = color_maps.temp_2m['norm'],
                       levels = color_maps.temp_2m['lvls'],
                       **opts['contourf_Opts'])
     cbar = add_colorbar( cf, color_maps.temp_2m['lvls'], **kwargs );            # Add colorbar
 
-  if ('u_wind 10.0FHAG' not in data) or ('v_wind 10.0FHAG' not in data):
-    log.error('Missing wind component(s)!')
+  if 'u wind' not in data:
+    log.error( 'No u-wind component in data')
+  elif 'v wind' not in data:
+    log.error( 'No v-wind component in data')
+  elif '10.0FHAG' not in data['u wind']:
+    log.error( 'No 10 meter u-wind component in data')
+  elif '10.0FHAG' not in data['v wind']:
+    log.error( 'No 10 meter v-wind component in data')
   else:
     plot_barbs(
-      ax, xx, yy, data['u_wind 10.0FHAG'], data['v_wind 10.0FHAG'], **kwargs
+      ax, xx, yy, data['u wind']['10.0FHAG'], data['v wind']['10.0FHAG'], **kwargs
     );                                                                          # Plot wind barbs
 
   txt = baseLabel( data['model'], data['initTime'], data['fcstTime'] );         # Get base string for label
@@ -284,22 +296,30 @@ def plot_1000hPa_theta_e_barbs( ax, data, **kwargs ):
     kwargs['extent'], scale = getMapExtentScale(ax, xx, yy)
   ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
 
-  if ('theta_e 1000.0MB' not in data):
+  cf = c = cbar = None;
+  if 'theta_e' not in data:
     log.error('No equivalent potential temperature data')
-    cf = cbar = None;
-  else:                                                                         # Else, required variables in dictionary
+  elif '1000.0MB' not in data['theta_e']:                                       # Else, required variables in dictionary
+    log.error('No equivalent potential temperature data at 1000 hPa')
+  else:
     log.debug('Plotting relative humidity')
-    cf = ax.contourf(xx, yy, data['theta_e 1000.0MB'].to('K').m, 
+    cf = ax.contourf(xx, yy, data['theta_e']['1000.0MB'].to('K').m, 
                       cmap   = color_maps.theta_e_1000['cmap'], 
                       norm   = color_maps.theta_e_1000['norm'],
                       levels = color_maps.theta_e_1000['lvls'],
                       **opts['contourf_Opts'])
     cbar = add_colorbar( cf, color_maps.theta_e_1000['lvls'], **kwargs );       # Add colorbar
 
-  if ('u_wind 1000.0MB' not in data) or ('v_wind 1000.0MB' not in data):
-    log.error('Missing wind component(s)!')
+  if 'u wind' not in data:
+    log.error( 'No u-wind component in data')
+  elif 'v wind' not in data:
+    log.error( 'No v-wind component in data')
+  elif '1000.0MB' not in data['u wind']:
+    log.error( 'No 1000hPa u-wind component in data')
+  elif '1000.0MB' not in data['v wind']:
+    log.error( 'No 1000hPa v-wind component in data')
   else:
-    plot_barbs( ax, xx, yy, data['u_wind 1000.0MB'], data['v_wind 1000.0MB'] ); # Plot wind barbs
+    plot_barbs( ax, xx, yy, data['u wind']['1000.0MB'], data['v wind']['1000.0MB'] ); # Plot wind barbs
 
   txt = baseLabel( data['model'], data['initTime'], data['fcstTime'] );         # Get base string for label
   txt.append('1000-hPa EQUIVALENT POTENTIAL TEMPERATURE AND WINDS');            # Update label
@@ -348,12 +368,14 @@ def plot_850hPa_temp_hght_barbs( ax, data, **kwargs ):
     kwargs['extent'], kwargs['scale'] = getMapExtentScale(ax, xx, yy, **kwargs)
   ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
 
-  if ('temp 850.0MB' not in data):
+  cf = c1 = c2 = cbar = None
+  if 'temperature' not in data:
     log.error('No temperature data!')
-    cf = cbar = c1 = None;
+  elif '850.0MB' not in data['temperature']:
+    log.error('No temperature data at 850 hPa')
   else:
     log.debug('Plotting surface temperature')
-    temp = data['temp 850.0MB'].to('degC')
+    temp = data['temperature']['850.0MB'].to('degC')
     cf   = ax.contourf(xx, yy, temp.m, 
                       cmap   = color_maps.temp_850['cmap'], 
                       norm   = color_maps.temp_850['norm'],
@@ -363,22 +385,29 @@ def plot_850hPa_temp_hght_barbs( ax, data, **kwargs ):
     c1   = ax.contour(xx, yy, temp.m, 
            levels = 0, colors = (0,0,1), linewidths = 2);                       # Contour for 0 degree C line
   
-  if ('geo_hght 850.0MB' not in data):
-    log.error('No geopotential height data!')
-    c2 = None
+  if 'geopotential' not in data:
+    log.error('No temperature data!')
+  elif '850.0MB' not in data['geopotential height']:
+    log.error('No temperature data at 850 hPa')
   else:
     log.debug('Plotting geopotential height')
-    c2 = ax.contour(xx, yy, data['geo_hght 850.0MB'].to('meter').m, 
+    c2 = ax.contour(xx, yy, data['geopotential height']['850.0MB'].to('meter').m, 
           levels = contour_levels.heights['850'],
           **opts['contour_Opts']
         );                                                                      # Contour the geopotential height
     ax.clabel(c2, **opts['clabel_Opts']);                                       # Change contour label settings
 
-  if ('u_wind 850.0MB' not in data) or ('v_wind 850.0MB' not in data):
-    log.error('Missing wind component(s)!')
+  if 'u wind' not in data:
+    log.error( 'No u-wind component in data')
+  elif 'v wind' not in data:
+    log.error( 'No v-wind component in data')
+  elif '850.0MB' not in data['u wind']:
+    log.error( 'No 850hPa u-wind component in data')
+  elif '850.0MB' not in data['v wind']:
+    log.error( 'No 850hPa v-wind component in data')
   else:
     plot_barbs(
-      ax, xx, yy, data['u_wind 850.0MB'], data['v_wind 850.0MB'], **kwargs
+      ax, xx, yy, data['u wind']['850.0MB'], data['v wind']['850.0MB'], **kwargs
     );                                                                          # Plot wind barbs
 
   txt = baseLabel( data['model'], data['initTime'], data['fcstTime'] );         # Get base string for label
@@ -429,34 +458,43 @@ def plot_500hPa_vort_hght_barbs( ax, data, **kwargs ):
     kwargs['extent'], kwargs['scale'] = getMapExtentScale(ax, xx, yy, **kwargs)
   ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
 
-  if 'abs_vor 500.0MB' not in data:
-    log.error('No voriticity data!');
-    cf = cbar = None;
+  cf = c = cbar = None
+  if 'abs_vort' not in data:
+    log.error('No absolute voriticity data!');
+  elif '500.0MB' not in data['abs_vort']:
+    log.error('No absolute voriticity data at 500hPa!');
   else:
     log.debug('Plotting vorticity') 
-    cf = ax.contourf(xx, yy, data['abs_vor 500.0MB'].m * 1.0e5, 
+    cf = ax.contourf(xx, yy, data['abs_vort']['500.0MB'].m * 1.0e5, 
                          cmap   = color_maps.vort_500['cmap'], 
                          norm   = color_maps.vort_500['norm'],
                          levels = color_maps.vort_500['lvls'],
                          **opts['contourf_Opts'])
     cbar = add_colorbar( cf, color_maps.vort_500['lvls'], **kwargs );             # Add a color bar
  
-  if 'geo_hght 500.0MB' not in data:
+  if 'geopotential' not in data:
     log.error('No geopotential height data')
-    c = None;
+  elif '500.0MB' not in data['geopotential height']:
+    log.error('No geopotential height data at 500hPa')
   else:  
     log.debug('Plotting geopotential height')
-    c = ax.contour(xx, yy, data['geo_hght 500.0MB'].to('meter').m, 
+    c = ax.contour(xx, yy, data['geopotential height']['500.0MB'].to('meter').m, 
          levels = contour_levels.heights['500'],
          **opts['contour_Opts']
         );                                                                        # Contour the geopotential height
     ax.clabel(c, **opts['clabel_Opts']);                                          # Change contour label settings
  
-  if ('u_wind 500.0MB' not in data) or ('v_wind 500.0MB' not in data):
-    log.error('Missing wind component(s)!')
+  if 'u wind' not in data:
+    log.error( 'No u-wind component in data')
+  elif 'v wind' not in data:
+    log.error( 'No v-wind component in data')
+  elif '500.0MB' not in data['u wind']:
+    log.error( 'No 500hPa u-wind component in data')
+  elif '500.0MB' not in data['v wind']:
+    log.error( 'No 500hPa v-wind component in data')
   else:
     plot_barbs(
-      ax, xx, yy, data['u_wind 500.0MB'], data['v_wind 500.0MB'], **kwargs
+      ax, xx, yy, data['u wind']['500.0MB'], data['v wind']['500.0MB'], **kwargs
     );                                                                          # Plot wind barbs
   
   txt = baseLabel( data['model'], data['initTime'], data['fcstTime'] );                         # Get base string for label
@@ -505,12 +543,18 @@ def plot_250hPa_isotach_hght_barbs( ax, data, **kwargs ):
     kwargs['extent'], kwargs['scale'] = getMapExtentScale(ax, xx, yy, **kwargs)
   ax = plot_basemap(ax, **kwargs);                                              # Set up the basemap, get updated axis and map scale
 
-  if ('u_wind 250.0MB' not in data) or ('v_wind 250.0MB' not in data):
-    log.error('Missing u- or v-wind component')
-    cf = cb = None;
+  cf = c = cbar = None;
+  if 'u wind' not in data:
+    log.error( 'No u-wind component in data')
+  elif 'v wind' not in data:
+    log.error( 'No v-wind component in data')
+  elif '250.0MB' not in data['u wind']:
+    log.error( 'No 250hPa u-wind component in data')
+  elif '250.0MB' not in data['v wind']:
+    log.error( 'No 250hPa v-wind component in data')
   else:
     log.debug('Plotting isotachs')
-    isotach = wind_speed( data['u_wind 250.0MB'], data['v_wind 250.0MB'] );     # Compute windspeed and convert to knots
+    isotach = wind_speed( data['u wind']['250.0MB'], data['v wind']['250.0MB'] );     # Compute windspeed and convert to knots
     cf      = ax.contourf(xx, yy, isotach.to('kts').m, 
                       cmap   = color_maps.wind_250['cmap'], 
                       norm   = color_maps.wind_250['norm'],
@@ -518,12 +562,14 @@ def plot_250hPa_isotach_hght_barbs( ax, data, **kwargs ):
                       **opts['contourf_Opts'])
     cbar    = add_colorbar( cf, color_maps.wind_250['lvls'], **kwargs );        # Add a color bar
  
-  if ('geo_hght 250.0MB' not in data):
+
+  if 'geopotential' not in data:
     log.error('No geopotential height data')
-    c = None;
-  else:
+  elif '250.0MB' not in data['geopotential height']:
+    log.error('No geopotential height data at 250hPa')
+  else:  
     log.debug('Plotting geopotential height')
-    c = ax.contour(xx, yy, data['geo_hght 250.0MB'].to('meter').m, 
+    c = ax.contour(xx, yy, data['geopotential height']['250.0MB'].to('meter').m, 
            levels = contour_levels.heights['250'],
            **opts['contour_Opts']
        );                                                                       # Contour the geopotential height
@@ -531,7 +577,7 @@ def plot_250hPa_isotach_hght_barbs( ax, data, **kwargs ):
 
   if cf is not None:                                                            # If cf is not None, that means the u- and v-winds exist
     plot_barbs(
-      ax, xx, yy, data['u_wind 250.0MB'], data['v_wind 250.0MB'], **kwargs
+      ax, xx, yy, data['u wind']['250.0MB'], data['v wind']['250.0MB'], **kwargs
     );                                                                          # Plot wind barbs
 
   txt = baseLabel( data['model'], data['initTime'], data['fcstTime'] );         # Get base string for label
