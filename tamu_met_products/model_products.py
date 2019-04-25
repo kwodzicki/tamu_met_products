@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt;
 import cartopy.crs as ccrs;
 
 from .data_backends.awips_model_utils import awips_fcst_times, get_init_fcst_times, awips_model_base;
-from .data_backends.awips_models import NAM40;
+from .data_backends.awips_models import NAM40, GFS;
 
 from .plotting.plot_utils       import initFigure, xy_transform, getMapExtentScale;
 from .plotting.model_plots      import (
@@ -37,22 +37,58 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 21600 ):
                  Default is 6 hourly (21600 s)
     EDEX   : URL for EDEX host to use
   '''
+  standardProducts( NAM40 )
+
+def GFS_Products( outdir = None, dpi = 120, interval = 21600 ):
+  '''
+  Name:
+    GFS_Products
+  Purpose:
+    A function to get data from GFS model to create HDWX products
+  Inputs:
+    times : List of datetimes to get data for
+  Outputs:
+    Returns a dictionary containing all data
+  Keywords:
+    interval : Interval, in seconds, for forecast plot creation.
+                 Default is 6 hourly (21600 s)
+    EDEX   : URL for EDEX host to use
+  '''
+  standardProducts( GFS )
+
+def standardProducts( modelInfo, outdir = None, dpi = 120, interval = 21600 ):
+  '''
+  Name:
+    standardProducts
+  Purpose:
+    A function to get data from model to create HDWX products
+  Inputs:
+    times : List of datetimes to get data for
+  Outputs:
+    Returns a dictionary containing all data
+  Keywords:
+    interval : Interval, in seconds, for forecast plot creation.
+                 Default is 6 hourly (21600 s)
+    EDEX   : URL for EDEX host to use
+  '''
   log = logging.getLogger(__name__);                                            # Set up function for logger
-  log.info( 'Getting NAM40 data' );
+  log.info( 'Getting {} data'.format( modelInfo['model_name'] ) );
   
   if outdir is None:
-    outdir = os.path.join( os.path.expanduser('~'), 'HDWX' );
+    outdir = os.path.join( os.path.expanduser('~'), 'HDWX', modelInfo['model_name'] );
   if not os.path.isdir(outdir): os.makedirs( outdir );
   
   DAL.changeEDEXHost( "edex-cloud.unidata.ucar.edu" )
   
   request = DAL.newDataRequest();
   request.setDatatype("grid");
-  request.setLocationNames( NAM40['model_name'] );
+  request.setLocationNames( modelInfo['model_name'] );
   
   times     = awips_fcst_times( request, interval = interval );
   timeFMT   = '%Y%m%dT%H%M%S'
   scale     = 2.5e5
+  scale     = modelInfo.get('map_scale', None)
+  log.debug( scale )
   transform = ccrs.PlateCarree();
   mapProj   = ccrs.LambertConformal(
                            central_longitude = -100.0, 
@@ -80,7 +116,7 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 21600 ):
     initTime, fcstTime = get_init_fcst_times( time[0] );                        # Get forecast initialization and forecast time as datetime objects
     fcstTime = fcstTime.strftime(timeFMT);                                      # Convert forecast time to string
     
-    base_file  = '{}_{}.png'.format( NAM40['model_name'], fcstTime )
+    base_file  = '{}_{}.png'.format( modelInfo['model_name'], fcstTime )
     filesExist = True;
     files      = {}
     for key, val in dirs.items():
@@ -89,7 +125,7 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 21600 ):
         filesExist = False
 
     if not filesExist:                                                          # If any of the plot files are missing
-      data = awips_model_base( request, time, NAM40['model_vars'], NAM40['mdl2stnd'] )
+      data = awips_model_base( request, time, modelInfo['model_vars'], modelInfo['mdl2stnd'] )
       data['lon'], data['lat'] = xy_transform(
         mapProj, transform, data['lon'], data['lat']
       );                                                                        # Transform the data; saves some time
@@ -105,7 +141,7 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 21600 ):
              fig.add_subplot(223, projection = mapProj, label = uuid.uuid4()),
              fig.add_subplot(224, projection = mapProj, label = uuid.uuid4())]
 
-      extent, scale = getMapExtentScale( ax[0], data['lon'], data['lat'] )
+      extent, scale = getMapExtentScale( ax[0], data['lon'], data['lat'], scale = scale )
       plot_500hPa_vort_hght_barbs(    ax[0], data, extent=extent );
       plot_250hPa_isotach_hght_barbs( ax[1], data, extent=extent );
       plot_850hPa_temp_hght_barbs(    ax[2], data, extent=extent );
@@ -135,7 +171,7 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 21600 ):
       log.info( 'Creating precip image for: {}'.format(fcstTime) )
       ax = fig.add_subplot(111, projection = mapProj, label = uuid.uuid4())
       if extent is None:
-        extent, scale = getMapExtentScale( ax, data['lon'], data['lat'] );
+        extent, scale = getMapExtentScale( ax, data['lon'], data['lat'], scale = scale );
 
       plot_precip_mslp_temps( ax, data, extent = extent )
       fig.savefig( files['precip'], dpi = dpi )
@@ -148,7 +184,7 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 21600 ):
       log.info( 'Creating surface image for: {}'.format(fcstTime) )
       ax = fig.add_subplot(111, projection = mapProj, label = uuid.uuid4())
       if extent is None:
-        extent, scale = getMapExtentScale( ax, data['lon'], data['lat'] );
+        extent, scale = getMapExtentScale( ax, data['lon'], data['lat'], scale = scale );
 
       plot_srfc_temp_barbs( ax, data, extent = extent )
       fig.savefig( files['surface'], dpi = dpi )
@@ -161,7 +197,7 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 21600 ):
       log.info( 'Creating 1000-hPa image for: {}'.format(fcstTime) )
       ax = fig.add_subplot(111, projection = mapProj, label = uuid.uuid4())
       if extent is None:
-        extent, scale = getMapExtentScale( ax, data['lon'], data['lat'] );
+        extent, scale = getMapExtentScale( ax, data['lon'], data['lat'], scale = scale );
 
       plot_1000hPa_theta_e_barbs( ax, data, extent = extent )
       fig.savefig( files['1000-hPa'], dpi = dpi )
@@ -174,7 +210,7 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 21600 ):
       log.info( 'Creating 850-hPa image for: {}'.format(fcstTime) )
       ax = fig.add_subplot(111, projection = mapProj, label = uuid.uuid4())
       if extent is None:
-        extent, scale = getMapExtentScale( ax, data['lon'], data['lat'] );
+        extent, scale = getMapExtentScale( ax, data['lon'], data['lat'], scale = scale );
 
       plot_850hPa_temp_hght_barbs( ax, data, extent = extent )
       fig.savefig( files['850-hPa'], dpi = dpi )
@@ -188,7 +224,7 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 21600 ):
       log.info( 'Creating 500-hPa image for: {}'.format(fcstTime) )
       ax = fig.add_subplot(111, projection = mapProj, label = uuid.uuid4())
       if extent is None:
-        extent, scale = getMapExtentScale( ax, data['lon'], data['lat'] );
+        extent, scale = getMapExtentScale( ax, data['lon'], data['lat'], scale = scale );
 
       plot_500hPa_vort_hght_barbs( ax, data, extent = extent )
       fig.savefig( files['500-hPa'], dpi = dpi )
@@ -202,7 +238,7 @@ def NAM40_Products( outdir = None, dpi = 120, interval = 21600 ):
       log.info( 'Creating 250-hPa image for: {}'.format(fcstTime) )
       ax = fig.add_subplot(111, projection = mapProj, label = uuid.uuid4())
       if extent is None:
-        extent, scale = getMapExtentScale( ax, data['lon'], data['lat'] );
+        extent, scale = getMapExtentScale( ax, data['lon'], data['lat'], scale = scale );
 
       plot_250hPa_isotach_hght_barbs( ax, data, extent = extent )
       fig.savefig( files['250-hPa'], dpi = dpi )
