@@ -103,8 +103,9 @@ def getMapExtentScale(ax, xx = None, yy = None, **kwargs):
 
   fig_w,fig_h              = ax.figure.get_size_inches() * 2.54;                # Get size of figure in centimeters
   ax_x0, ax_y0, ax_w, ax_h = ax._position.bounds;                               # Get size of axes relative to figure size
-  
-  scale   = getMapScale( ax, xx = xx, yy = yy, **kwargs);                       # Get scaling for the map
+
+  # scale   = getMapScale( ax, xx = xx, yy = yy, **kwargs);                       # Get scaling for the map
+  scale   = kwargs.get('scale', getMapScale( ax, xx = xx, yy = yy, **kwargs ))
   dx      = scale * (fig_w * ax_w) / 2.0;                                       # Multiply figure width by axis width, divide by 2 and multiply by scale
   dy      = scale * (fig_h * ax_h) / 2.0;                                       # Multiply figure height by axis height, divide by 2 and multiply by scale
   extent  = (-dx, dx, -dy, dy)
@@ -234,8 +235,8 @@ def plot_barbs( ax, xx, yy, u, v, **kwargs ):
   Outputs:
     None.
   '''
-  log = logging.getLogger(__name__);                                            # Logger for the function
-  scale = kwargs['scale'] if 'scale' in kwargs else getMapScale( ax, xx, yy )   # Compute map scale if none input
+  log   = logging.getLogger(__name__);                                          # Logger for the function
+  scale = kwargs.get('scale', getMapScale( ax, xx, yy ))                        # Compute map scale if none input
   log.debug( 'Computing skip for winds at scale of 1:{}'.format( scale ) )
 
   diff, skip = 0, 0;                                                            # Initialize difference between x-values and skip

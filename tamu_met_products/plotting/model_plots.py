@@ -440,6 +440,7 @@ def plot_500hPa_vort_hght_barbs( ax, data, **kwargs ):
   '''
   log = logging.getLogger(__name__)
   log.info('Creating 500 hPa plot')
+  log.debug( kwargs )
 
   if 'lon' not in data:
     log.error('No longitude values in data')
