@@ -12,7 +12,7 @@ NAM40 = {
         'dewpoint'      : {'parameters' : ['DpT'], 
                            'levels'     : stnd_levels},
         'geopotential'  : {'parameters' : ['GH'],
-                           'levels'     : ['1000.0MB', '850.0MB', '500.0MB', '250.0MB']},
+                           'levels'     : stnd_levels},
         'MSLP'          : {'parameters' : ['PMSL'],
                            'levels'     : ['0.0MSL']},
         'RH'            : {'parameters' : ['RH'],
@@ -34,8 +34,8 @@ NAM40 = {
 
 
 GFS = {
-    'model_name' : 'GFS',
-    'map_scale'  : 2.0e5,
+    'model_name' : 'GFS20',
+    'map_scale'  : 1.5e5,
     'model_vars' : {
         'wind'          : {'parameters' : ['uW', 'vW'],
                            'levels'     : ['10.0FHAG'] + stnd_levels},
@@ -44,7 +44,7 @@ GFS = {
         'dewpoint'      : {'parameters' : ['DpT'], 
                            'levels'     : stnd_levels},
         'geopotential'  : {'parameters' : ['GH'],
-                           'levels'     : ['1000.0MB', '850.0MB', '500.0MB', '250.0MB']},
+                           'levels'     : stnd_levels},
         'MSLP'          : {'parameters' : ['PMSL'],
                            'levels'     : ['0.0MSL']},
         'RH'            : {'parameters' : ['RH'],

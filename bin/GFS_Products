@@ -3,13 +3,13 @@ import logging
 import argparse
 
 from tamu_met_products import STREAMHANDLER
-from tamu_met_products.model_products import NAM40_Products
+from tamu_met_products.model_products import GFS_Products
 
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser( description='Create NAM40 model products for HDWX' )
+  parser = argparse.ArgumentParser( description='Create GFS model products for HDWX' )
   parser.add_argument( '--loglevel', type=int, default = logging.WARNING, help='Set logging level')
 
   args = parser.parse_args()
   STREAMHANDLER.setLevel( args.loglevel )
   
-  x = NAM40_Products()
+  x = GFS_Products()

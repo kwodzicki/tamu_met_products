@@ -16,7 +16,8 @@ setuptools.setup(
   version          = main_ns['__version__'],
   packages         = setuptools.find_packages(),
   package_data     = {'' : ['*.json']},
-  scripts          = ['bin/NAM40_Products'],
+  scripts          = ['bin/NAM40_Products',
+                      'bin/GFS_Products'],
   install_requires = ['cartopy', 'matplotlib', 'metpy', 'pyproj', 'python-awips'],
   zip_safe         = False
 )

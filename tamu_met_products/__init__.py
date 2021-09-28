@@ -1,13 +1,16 @@
 import logging
-log = logging.getLogger(__name__)
-srm = logging.StreamHandler()
-srm.setFormatter(
+
+LOG = logging.getLogger(__name__)
+LOG.setLevel( logging.DEBUG )
+
+STREAMHANDLER = logging.StreamHandler()
+STREAMHANDLER.setFormatter(
   logging.Formatter( 
-    '%(asctime)s %(levelname)s %(name)s.%(funcName)-15.15s - %(message)s',
+    '%(asctime)s [%(levelname)-8.8s] %(name)s.%(funcName)-15.15s - %(message)s',
     '%Y-%m-%d %H:%M:%S'
   )
 )
+STREAMHANDLER.setLevel( logging.WARNING )
 
-srm.setLevel( logging.DEBUG )
-log.setLevel( logging.DEBUG )
-log.addHandler( srm )
+LOG.addHandler( STREAMHANDLER )
+
