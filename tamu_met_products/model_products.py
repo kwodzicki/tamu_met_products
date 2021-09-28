@@ -141,10 +141,10 @@ def standardProducts( data, outdir = None, dpi = 120, interval = 21600, scale = 
            fig.add_subplot(224, projection = mapProj, label = uuid.uuid4())]
 
     extent, scale = getMapExtentScale( ax[0], data['lon'], data['lat'], scale = scale )
-    plot_500hPa_vort_hght_barbs(    ax[0], data, extent=extent, scale=scale );
-    plot_250hPa_isotach_hght_barbs( ax[1], data, extent=extent, scale=scale );
-    plot_850hPa_temp_hght_barbs(    ax[2], data, extent=extent, scale=scale );
-    plot_rh_mslp_thick(             ax[3], data, extent=extent, scale=scale );
+    plot_500hPa_vort_hght_barbs(    ax[0], data, extent=extent, scale=scale )
+    plot_250hPa_isotach_hght_barbs( ax[1], data, extent=extent, scale=scale )
+    plot_850hPa_temp_hght_barbs(    ax[2], data, extent=extent, scale=scale )
+    plot_rh_mslp_thick(             ax[3], data, extent=extent, scale=scale )
 
     fig.savefig( files['4-panel'], dpi = dpi )
 

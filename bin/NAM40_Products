@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
 
-from tamu_met_products.NAM40_Products import NAM40_Products
+from tamu_met_products.model_products import NAM40_Products
 
 x = NAM40_Products();

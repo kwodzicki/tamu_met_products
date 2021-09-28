@@ -2,10 +2,10 @@
 import setuptools
 from distutils.util import convert_path
 
-main_ns  = {};
-ver_path = convert_path("tamu_met_products/version.py");
+main_ns  = {}
+ver_path = convert_path("tamu_met_products/version.py")
 with open(ver_path) as ver_file:
-    exec(ver_file.read(), main_ns);
+    exec(ver_file.read(), main_ns)
 
 setuptools.setup(
   name             = "tamu_met_products",
@@ -15,7 +15,9 @@ setuptools.setup(
   author_email     = "ksmaley@tamu.edu,krwodzicki@gmail.com",
   version          = main_ns['__version__'],
   packages         = setuptools.find_packages(),
+  package_data     = {'' : ['*.json']},
+  scripts          = ['bin/NAM40_Products'],
   install_requires = ['cartopy', 'matplotlib', 'metpy', 'pyproj', 'python-awips'],
   zip_safe         = False
-);
+)
 

@@ -68,7 +68,7 @@ def plot_rh_mslp_thick( ax, data, **kwargs ):
                       norm   = color_maps.surface['norm'],
                       levels = color_maps.surface['lvls'],
                       **opts['contourf_Opts'])
-    cbar = add_colorbar( cf, color_maps.surface['lvls'], **kwargs );            # Add colorbar
+    cbar = add_colorbar( ax, cf, color_maps.surface['lvls'], **kwargs );            # Add colorbar
   
   if 'geopotential' not in data:
     log.error( 'No geopotential height data') 
@@ -144,7 +144,7 @@ def plot_precip_mslp_temps( ax, data, **kwargs ):
                       norm   = color_maps.precip['norm'],
                       levels = color_maps.precip['lvls'],
                       **opts['contourf_Opts'])
-    cbar = add_colorbar( cf, color_maps.precip['lvls'], **kwargs );            # Add colorbar
+    cbar = add_colorbar( ax, cf, color_maps.precip['lvls'], **kwargs );            # Add colorbar
   else:
     log.error('No precipitation data')
 
@@ -236,7 +236,7 @@ def plot_srfc_temp_barbs( ax, data, **kwargs ):
                       norm   = color_maps.temp_2m['norm'],
                       levels = color_maps.temp_2m['lvls'],
                       **opts['contourf_Opts'])
-    cbar = add_colorbar( cf, color_maps.temp_2m['lvls'], **kwargs );            # Add colorbar
+    cbar = add_colorbar( ax, cf, color_maps.temp_2m['lvls'], **kwargs );            # Add colorbar
 
   if 'u wind' not in data:
     log.error( 'No u-wind component in data')
@@ -308,7 +308,7 @@ def plot_1000hPa_theta_e_barbs( ax, data, **kwargs ):
                       norm   = color_maps.theta_e_1000['norm'],
                       levels = color_maps.theta_e_1000['lvls'],
                       **opts['contourf_Opts'])
-    cbar = add_colorbar( cf, color_maps.theta_e_1000['lvls'], **kwargs );       # Add colorbar
+    cbar = add_colorbar( ax, cf, color_maps.theta_e_1000['lvls'], **kwargs );       # Add colorbar
 
   if 'u wind' not in data:
     log.error( 'No u-wind component in data')
@@ -381,7 +381,7 @@ def plot_850hPa_temp_hght_barbs( ax, data, **kwargs ):
                       norm   = color_maps.temp_850['norm'],
                       levels = color_maps.temp_850['lvls'],
                       **opts['contourf_Opts'])
-    cbar = add_colorbar( cf, color_maps.temp_850['lvls'], **kwargs );           # Add colorbar
+    cbar = add_colorbar( ax, cf, color_maps.temp_850['lvls'], **kwargs );           # Add colorbar
     c1   = ax.contour(xx, yy, temp.m, 
            levels = 0, colors = (0,0,1), linewidths = 2);                       # Contour for 0 degree C line
   
@@ -471,7 +471,7 @@ def plot_500hPa_vort_hght_barbs( ax, data, **kwargs ):
                          norm   = color_maps.vort_500['norm'],
                          levels = color_maps.vort_500['lvls'],
                          **opts['contourf_Opts'])
-    cbar = add_colorbar( cf, color_maps.vort_500['lvls'], **kwargs );             # Add a color bar
+    cbar = add_colorbar( ax, cf, color_maps.vort_500['lvls'], **kwargs );             # Add a color bar
  
   if 'geopotential' not in data:
     log.error('No geopotential height data')
@@ -561,7 +561,7 @@ def plot_250hPa_isotach_hght_barbs( ax, data, **kwargs ):
                       norm   = color_maps.wind_250['norm'],
                       levels = color_maps.wind_250['lvls'],
                       **opts['contourf_Opts'])
-    cbar    = add_colorbar( cf, color_maps.wind_250['lvls'], **kwargs );        # Add a color bar
+    cbar    = add_colorbar( ax, cf, color_maps.wind_250['lvls'], **kwargs );        # Add a color bar
  
 
   if 'geopotential' not in data:
