@@ -15,36 +15,36 @@ thickness['levels']     = thickness['levels'] * 40 + 5500
 
 # Relative humdity; in percent
 humidity = {
-  '700' : np.arange(  60,   91,  10)
+  '700.0MB' : np.arange(  60,   91,  10)
 }
 
 precip = np.array([0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 
                    1.50, 2.00, 2.5, 3.00, 3.5, 4.00, 4.5, 5.0])
 # Temperatures at 850 hPa
 temperature = {
-  '2m'  : np.arange(  20,   81,   5),
-  '850' : np.arange( -20,   31,   5)
+  '2.0FHAG'  : np.arange(  20,   81,   5),
+  '850.0MB' : np.arange( -20,   31,   5)
 }
 
 # Vorticity; don't forget to scale by 10^5
 vorticity = {
-  '500' : np.arange(  -9,   25,   3)
+  '500.0MB' : np.arange(  -9,   25,   3)
 }
 
 # Winds
 winds = {
-  '250' : np.arange(  70,  171,  20)
+  '250.0MB' : np.arange(  70,  171,  20)
 }
 
 theta_e = {
-  '1000' : np.arange( 280, 371, 10 ) 
+  '1000.0MB' : np.arange( 280, 371, 10 ) 
 }
 
 #Heights 
 heights = {
-  '850' : np.arange( -25, 26 ) *  30 + 1500,
-  '700' : np.arange( -25, 26 ) *  30 + 3000,
-  '500' : np.arange( -25, 26 ) *  60 + 5400,
-  '300' : np.arange( -25, 26 ) * 120 + 9000,
-  '250' : np.arange( -25, 26 ) * 120 + 9000
+  '850.0MB' : np.arange( -25, 26 ) *  30 + 1500,
+  '700.0MB' : np.arange( -25, 26 ) *  30 + 3000,
+  '500.0MB' : np.arange( -25, 26 ) *  60 + 5400,
+  '300.0MB' : np.arange( -25, 26 ) * 120 + 9000,
+  '250.0MB' : np.arange( -25, 26 ) * 120 + 9000
 }

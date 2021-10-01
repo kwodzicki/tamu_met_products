@@ -1,6 +1,8 @@
 import logging
 from os import linesep
 from datetime import datetime, timedelta
+from threading import Thread
+from queue import Queue
 
 import numpy as np
 from metpy.units import units
@@ -15,7 +17,7 @@ from metpy.calc import (
 
 from awips.dataaccess import DataAccessLayer as DAL
 
-iso = '%Y-%m-%d %H:%M:%S'  # ISO format for date
+ISO = '%Y-%m-%d %H:%M:%S'  # ISO format for date
 
 def calcMLCAPE( levels, temperature, dewpoint, depth = 100.0 * units.hPa ):
   _, T_parc, Td_par = mixed_parcel(levels, temperature, dewpoint, 
@@ -26,24 +28,28 @@ def calcMLCAPE( levels, temperature, dewpoint, depth = 100.0 * units.hPa ):
   cape, cin = cape_cin( levels, temperature, dewpoint, profile )
   return cape
 
-################################################################################
-def get_init_fcst_times( time ):
-  '''
-  Name:
-    get_init_fcst_times
-  Purpose:
-    A python function to extract forecast initialization and forecast
-    time from an awips time object
-  Inputs:
-    time : Time to convert
-  Ouputs:
-    datetime objects for forecast initialization time and
-    forecast time
-  Keywords:
+def get_init_fcst_times( time, strfmt = None ):
+  """
+  Extract forecast initialization and forecast time from an awips time object
+
+  Arguments:
+    time (DataTime) : Time to convert
+
+  Keyword arguments:
     None.
-  '''
-  initTime = datetime.strptime( str(time), iso )
+
+  Returns:
+    tuple : datetime objects for forecast initialization time and
+      forecast time
+
+  """
+
+  initTime = datetime.strptime( str(time), ISO )
   fcstTime = initTime + timedelta( seconds = time.getFcstTime() )
+  if isinstance( strfmt, str ):
+    initTime = initTime.strftime( strfmt )
+    fcstTime = fcstTime.strftime( strfmt )
+
   return initTime, fcstTime
 
 class AWIPSData( dict ):
@@ -85,7 +91,12 @@ class AWIPSData( dict ):
     if name not in self:                                                        # If the variable does NOT exist
       raise Exception( f'Failed to find variable {name}' )
 
-    if level is not None:                                                       # If level is NOT None
+    if level is not None:
+      if isinstance( level, units.Quantity ):
+        unit  = 'FHAG' if level.units == units('meter') else 'MB'
+        level = f'{level.magnitude:0.1f}{unit}'
+      elif not isinstance( level, str ):
+        raise Exception( 'Level keyword must be of type str or Quantity!' )
       if level not in self[name]:                                               # If the level does NOT exist in the variable
         raise Exception( f'Failed to find level {level} in variable {name}' )
 
@@ -105,7 +116,8 @@ class AWIPSModelDownloader( object ):
     self._request.setDatatype( "grid" )                                         # Set data request type to grid data
     self._request.setLocationNames( modelName )                                 # Set data set to modelName
 
-    self.log = logging.getLogger(__name__)                                      # Initialize a logger
+    self.log   = logging.getLogger(__name__)                                    # Initialize a logger
+    self.queue = Queue( 2 )                                                     # Allow queue to have up-to 2 items
 
   def fcst_times( self, interval = 3600, max_forecast = None ):
     '''
@@ -124,34 +136,34 @@ class AWIPSModelDownloader( object ):
                         Default is last available time
     '''
 
-    cycles    = DAL.getAvailableTimes(self._request, True)                     # Get forecast cycles
+    cycles    = DAL.getAvailableTimes(self._request, True)                      # Get forecast cycles
     times     = DAL.getAvailableTimes(self._request)                            # Get forecast times
 
     #self.log.debug( f'Found following model cycles : {cycles}' )
     #self.log.debug( f'Found following model times  : {times}'  )
 
     try:
-      times = DAL.getForecastRun(cycles[-1], times)                          # Get forecast times in latest cycle
+      times = DAL.getForecastRun(cycles[-1], times)                             # Get forecast times in latest cycle
     except Exception as err:
       self.log.error( f'Failed to get model run cycle/time : {err}' )
       return [] 
  
     if max_forecast is None:
-      max_forecast = times[-1].getFcstTime()                                   # Set max_forecast value default based on model
-    nTimes    =  max_forecast // interval + 1                                  # Number of forecast steps to get based on inteval
+      max_forecast = times[-1].getFcstTime()                                    # Set max_forecast value default based on model
+    nTimes    =  max_forecast // interval + 1                                   # Number of forecast steps to get based on inteval
     flt_times = [ [] for i in range( nTimes ) ]                                 # Initialized list of empty lists for forecast times
     
     for time in times:                                                          # Iterate over all times
-      fcstTime = time.getFcstTime()                                            # Get the valid forecast time
+      fcstTime = time.getFcstTime()                                             # Get the valid forecast time
       if ((fcstTime % interval) == 0) and (fcstTime < max_forecast):            # If the forecast hour falls on the interval requested AND is before the max forecast time
-        fcstDur = time.getValidPeriod().duration()                             # Get duration of the forecast period
+        fcstDur = time.getValidPeriod().duration()                              # Get duration of the forecast period
         if (fcstDur == 0) or (fcstDur == interval):                             # If instantaneous forecast period OR period covers requested interval
-          index = fcstTime // interval                                         # Index for the times flt_times array
-          flt_times[index].append( time )                                      # Append the time to the list at index
+          index = fcstTime // interval                                          # Index for the times flt_times array
+          flt_times[index].append( time )                                       # Append the time to the list at index
  
-    return flt_times                                                           # Return forecast runs for latest cycle
+    return flt_times                                                            # Return forecast runs for latest cycle
 
-  def getData( self, time, model_vars, mdl2stnd, previous_data = None ):
+  def _download( self, time, model_vars, mdl2stnd, previous_data = None ):
     '''
     Name:
       awips_model_base
@@ -168,33 +180,35 @@ class AWIPSModelDownloader( object ):
     Keywords:
       previous_data : Dictionary with data from previous time step
     '''
+
     initTime, fcstTime = get_init_fcst_times( time[0] )
     data = AWIPSData( model    = self._request.getLocationNames()[0],
+                      time     = time[0],
                       initTime = initTime,
-                      fcstTime = fcstTime)                                            # Initialize empty dictionary
+                      fcstTime = fcstTime)                                      # Initialize empty dictionary
 
     self.log.info('Attempting to download {} data'.format( data['model'] ) )
 
     for var in model_vars:                                                      # Iterate over variables in the vars list
       self.log.debug( 'Getting: {}'.format( var ) )
-      self._request.setParameters( *model_vars[var]['parameters'] )            # Set parameters for the download request
-      self._request.setLevels(     *model_vars[var]['levels'] )                # Set levels for the download request
+      self._request.setParameters( *model_vars[var]['parameters'] )             # Set parameters for the download request
+      self._request.setLevels(     *model_vars[var]['levels'] )                 # Set levels for the download request
 
       response = DAL.getGridData(self._request, time)                           # Request the data
 
       for res in response:                                                      # Iterate over all data request responses
-        varName = res.getParameter()                                           # Get name of the variable in the response
-        varLvl  = res.getLevel()                                               # Get level of the variable in the response
-        varName = mdl2stnd [ varName ]                                         # Convert variable name to local standarized name
-        if varName not in data: data[varName] = {}                             # If variable name NOT in data dictionary, initialize new dictionary under key
+        varName = res.getParameter()                                            # Get name of the variable in the response
+        varLvl  = res.getLevel()                                                # Get level of the variable in the response
+        varName = mdl2stnd [ varName ]                                          # Convert variable name to local standarized name
+        if varName not in data: data[varName] = {}                              # If variable name NOT in data dictionary, initialize new dictionary under key
 
-        data[ varName ][ varLvl ] = res.getRawData()                           # Add data under level name
+        data[ varName ][ varLvl ] = res.getRawData()                            # Add data under level name
         try:                                                                    # Try to
-          unit = units( res.getUnit() )                                        # Get units and convert to MetPy units
+          unit = units( res.getUnit() )                                         # Get units and convert to MetPy units
         except:                                                                 # On exception
-          unit = '?'                                                           # Set units to ?
+          unit = '?'                                                            # Set units to ?
         else:                                                                   # If get units success
-          data[ varName ][ varLvl ] *= unit                                    # Get data and create MetPy quantity by multiplying by units
+          data[ varName ][ varLvl ] *= unit                                     # Get data and create MetPy quantity by multiplying by units
 
         msgFMT = 'Got data for:{0}  Var:  {1}{0}  Lvl:  {2}{0}  Unit: {3}'
         self.log.debug( msgFMT.format( linesep, varName, varLvl, unit ) )
@@ -217,7 +231,7 @@ class AWIPSModelDownloader( object ):
                                 dx, dy, data['lat'] )                            # Compute absolute vorticity
   
     # 1000 MB equivalent potential temperature  
-    level = '1000.0MB'
+    level = units.Quantity(1000, 'hPa')
     try:
       T  = data.getVar( 'temperature', level )
       Td = data.getVar( 'dewpoint',    level )
@@ -226,7 +240,7 @@ class AWIPSModelDownloader( object ):
     else:
       self.log.debug( 'Computing equivalent potential temperature at 1000 hPa' )
       data['theta_e'] = {
-        level : equivalent_potential_temperature( 1000.0 * units('hPa'), T, Td )
+        f'{level.magnitude:0.1f}MB' : equivalent_potential_temperature( level, T, Td )
       }
   
       return data
@@ -276,3 +290,36 @@ class AWIPSModelDownloader( object ):
               data['MLCAPE'][j,i] = cape
 
     return data                                                                  # Return data dictionary  
+
+  def _getData( self, times, *args, **kwargs ): 
+    for time in times:
+      if time:
+        self.queue.put( 
+          self._download( time, *args, **kwargs ) 
+        )
+
+    self.queue.put(None)
+
+  def getData( self, *args, **kwargs ):
+    """
+    Arguments:
+      model_vars (dict) : Model variables, and levels, to download
+      mdl2stnd (dict) : Look-up table to convert awips variable names to
+        standard names used in this package
+
+    Keyword arguments:
+      previous_data (dict) : Data from previous time step used to compute
+        some fields that depend on previous data
+
+    """
+
+    thread = Thread(target = self._getData, args = args, kwargs = kwargs)       # Initialize downloader thread
+    thread.start()                                                              # Start downloading
+    while True:                                                                 # Iterate forever
+      tmp = self.queue.get()                                                    # Get a value from the queue
+      self.queue.task_done()                                                    # Let queue know an object has been removed
+      if tmp is None: break                                                     # If data is None, then the download has finished so break loop
+      yield tmp                                                                 # yield tmp data
+
+    thread.join()                                                               # join the thread
+    self.queue.join()                                                           # join the queue

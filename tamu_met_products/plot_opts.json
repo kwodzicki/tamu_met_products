@@ -36,6 +36,6 @@
   "projection" : {
     "name"              : "LambertConformal",
     "central_latitude"  :   40.0,
-    "central_longitude" :  -92.5
+    "central_longitude" :  -98.5
   }
 }

@@ -31,6 +31,33 @@ def initFigure(nrows, ncols, **kwargs):
   plt.subplots_adjust( **opts['subplot_adjust'] )                              # Set up subplot margins
   return fig, ax
 
+def parseArgs( ax, data, kwargs ):
+  """
+  Parse/update arguments for plotting
+
+  - Check that lon/lat variables exist in input data.
+  - Apply transformation to lon/lat variables so that plotting
+    is quicker; i.e., do not have to transform for each plot
+  - Set up map extent/scale
+
+  """
+
+  if 'lon' not in data:
+    raise Exception('No longitude values in data')
+  elif 'lat' not in data:
+    raise Exception('No latitude values in data')
+
+  transform = kwargs.pop( 'transform', None );                                  # Get transformation for x- and y-values
+  if transform is not None:                                                     # If transform is not None, then we must transform the points for plotting
+    xx, yy = xy_transform( ax.projection, transform, data['lon'], data['lat'] )
+  else:
+    xx, yy = data['lon'], data['lat']
+
+  if 'extent' not in kwargs:
+    kwargs['extent'], kwargs['scale'] = getMapExtentScale(ax, xx, yy, **kwargs)
+
+  data['xx'], data['yy'] = xx, yy                                               # Write xx and yy variables into the data dictionary
+
 ################################################################################
 def getMapScale(ax, xx = None, yy = None, **kwargs):
   """
@@ -71,8 +98,8 @@ def getMapScale(ax, xx = None, yy = None, **kwargs):
       msgFMT = 'Setting map scale: {:8.3f}'
     else:
       msgFMT = 'Changing user defined scale: {:8.3f} -> {}'.format( scale, '{:8.3f}' )
-    scale   = x_scale if (x_scale >= y_scale) else y_scale;
-    #scale   = x_scale if (x_scale <= y_scale) else y_scale
+    #scale   = x_scale if (x_scale >= y_scale) else y_scale;
+    scale   = x_scale if (x_scale <= y_scale) else y_scale
     if msgFMT is not None:
       log.info( msgFMT.format(scale) )
 
@@ -109,8 +136,6 @@ def getMapExtentScale(ax, xx = None, yy = None, **kwargs):
   fig_w,fig_h              = ax.figure.get_size_inches() * 2.54                # Get size of figure in centimeters
   ax_x0, ax_y0, ax_w, ax_h = ax._position.bounds                               # Get size of axes relative to figure size
 
-  # scale   = getMapScale( ax, xx = xx, yy = yy, **kwargs);                       # Get scaling for the map
-  #scale   = kwargs.get('scale', None)
   scale = getMapScale( ax, xx = xx, yy = yy, **kwargs )
 
   dx      = scale * (fig_w * ax_w) / 2.0                                       # Multiply figure width by axis width, divide by 2 and multiply by scale
@@ -206,7 +231,7 @@ def add_colorbar( ax, mappable, ticks, **kwargs ):
 
   log = logging.getLogger(__name__)
   log.debug('Creating color bar')
-  fontsize  = kwargs.pop('fontsize', 8)                                         # Pop off fontsize from keywords
+  fontsize  = kwargs.pop('fontsize', 7)                                         # Pop off fontsize from keywords
   title     = kwargs.pop('title',    None)
   txt       = ax.text(0.5, 0.5, 'X')                                            # Write a capital 'X' so that we can figure out how big text is on plot
   renderer  = ax.figure.canvas.get_renderer()                                   # Renderer of the object
@@ -215,10 +240,12 @@ def add_colorbar( ax, mappable, ticks, **kwargs ):
   txt.remove( )                                                                 # Remove the text from the image
 
   ax_x0, ax_y0, ax_w, ax_h = ax._position.bounds                                # Get size of axes relative to figure size
-  ax_w  /=  4.0                                                                 # Divide axis width by 4
-  rect   = (ax_x0, ax_y0-2.5*cbHeight, ax_w, cbHeight)
+  ax_w  /=  3.5                                                                 # Divide axis width by 4
+  rect   = (ax_x0, ax_y0-3.0*cbHeight, ax_w, cbHeight)
   cb_ax  = ax.figure.add_axes( rect, label = uuid.uuid4() )                     # Add axis for the color bar
-  cbar   = plt.colorbar(mappable, cax=cb_ax, ticks=ticks, **opts['colorbar'])   # Generate the colorbar
+  cbar   = plt.colorbar(mappable, cax=cb_ax, ticks=kwargs.get('levels', None), 
+             **opts['colorbar']
+  )                                                                             # Generate the colorbar
   cbar.ax.xaxis.set_ticks_position('top')                                       # Place labels on top of color bar
   x_ticks = cbar.ax.get_xticklabels()                                           # Get x-axis tick labels of color bar
   y_ticks = cbar.ax.get_yticklabels()                                           # Get y-axis tick labels of color bar
@@ -256,10 +283,10 @@ def plot_barbs( ax, xx, yy, u, v, **kwargs ):
   scale = kwargs.get('scale', getMapScale( ax, xx, yy ))                        # Compute map scale if none input
   log.debug( 'Computing skip for winds at scale of 1:{}'.format( scale ) )
 
-  diff, skip = 0, 0                                                            # Initialize difference between x-values and skip
-  while diff < scale:                                                           # While the difference is less than roughly 2 degrees
-    skip += 1                                                                  # Increment skip
-    diff  = abs(xx[0,skip] - xx[0,0])                                          # Compute new difference
+  diff, skip = 0, 0                                                             # Initialize difference between x-values and skip
+  while diff < (scale/2.0):                                                     # While the difference is less than roughly 2 degrees
+    skip += 1                                                                   # Increment skip
+    diff  = abs(xx[0,skip] - xx[0,0])                                           # Compute new difference
   log.debug( 'Skipping every {} values'.format(skip) )
   ax.barbs( xx[::skip,::skip], yy[::skip,::skip], 
             u.to('kts')[::skip,::skip].m, v.to('kts')[::skip,::skip].m, 
