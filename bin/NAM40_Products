@@ -3,15 +3,20 @@ import logging
 import argparse
 
 from tamu_met_products import STREAMHANDLER
-from tamu_met_products.model_products import ModelPlotter#NAM40_Products
+from tamu_met_products.model_products import ModelPlotter
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser( description='Create NAM40 model products for HDWX' )
   parser.add_argument( '--update', action='store_true', help='Set to force update of all plots')
+  parser.add_argument( '-o', '--outdir', type=str, help='Output directory for storing images')
+  parser.add_argument( '--EDEX',     type=str, help='Set EDEX server used for data downloading')
   parser.add_argument( '--loglevel', type=int, default = logging.WARNING, help='Set logging level')
 
-  args = parser.parse_args()
-  STREAMHANDLER.setLevel( args.loglevel  )
-  plotter = ModelPlotter( update = args.update )
-   
-  plotter.NAM40_Products( update = args.update )
+  args = parser.parse_args().__dict__
+  
+  STREAMHANDLER.setLevel( args.pop('loglevel') )
+
+  plotter = ModelPlotter( args.pop('outdir') )
+
+  if args['EDEX'] is None: _ = args.pop('EDEX')                                 # If EDEX is not set, then pop off the dictionary
+  plotter.NAM40_Products( **args )

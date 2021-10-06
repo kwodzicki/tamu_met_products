@@ -111,12 +111,14 @@ class AWIPSModelDownloader( object ):
 
   def __init__(self, modelName, EDEX = "edex-cloud.unidata.ucar.edu", **kwargs):
 
+    self.log   = logging.getLogger(__name__)                                    # Initialize a logger
+    self.log.debug( f'Using EDEX : {EDEX}' )
+
     DAL.changeEDEXHost( EDEX )                                                  # Set the EDEX host
     self._request = DAL.newDataRequest()                                        # Initialize a new data request
     self._request.setDatatype( "grid" )                                         # Set data request type to grid data
     self._request.setLocationNames( modelName )                                 # Set data set to modelName
 
-    self.log   = logging.getLogger(__name__)                                    # Initialize a logger
     self.queue = Queue( 2 )                                                     # Allow queue to have up-to 2 items
 
   def fcst_times( self, interval = 3600, max_forecast = None ):

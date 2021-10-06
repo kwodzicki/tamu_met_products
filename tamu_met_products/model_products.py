@@ -121,7 +121,11 @@ class ModelPlotter( object ):
   def filePaths( self, date ):
     files = {}
     for product, root in self.dirs.items():
-      files[product] = self.filePath( date, product, root )
+      try:
+        files[product] = self.filePath( date, product, root )
+      except Exception as err:
+        self.log.debug( f'Hit weird time index exception : {err}' )
+        pass
     return files
 
   def _clearFig( self ):
